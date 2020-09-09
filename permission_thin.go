@@ -21,7 +21,6 @@ func (p *thinPermission) Permit(sub Subject, obj Object, act Action) error {
 	if _, ok := p.bySubject[sub]; !ok {
 		p.bySubject[sub] = make(map[Object]Action)
 	}
-
 	p.bySubject[sub][obj] |= act
 
 	if _, ok := p.byObject[obj]; !ok {

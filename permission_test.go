@@ -8,48 +8,48 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var permitters = []struct {
-	name string
-	p    Permission
-}{
-	{
-		name: "thin",
-		p:    newThinPermission(),
-	},
-	{
-		name: "synced",
-		p:    newSyncedPermission(newThinPermission()),
-	},
-	{
-		name: "thin with subject grouping",
-		p:    newSubjectGroupedPermission(newFatGrouping()),
-	},
-	{
-		name: "thin with object grouping",
-		p:    newObjectGroupedPermission(newFatGrouping()),
-	},
-	{
-		name: "thin with both groupped",
-		p:    newBothGroupedPermission(newFatGrouping(), newFatGrouping()),
-	},
-}
-
-var initPermissions = []struct {
-	sub Subject
-	obj Object
-	act Action
-}{
-	{sub: User("alan"), obj: Article("market garden"), act: ReadWriteExec},
-	{sub: User("karman"), obj: Article("market garden"), act: ReadWrite},
-	{sub: User("alan"), obj: Article("overlord"), act: ReadWriteExec},
-	{sub: User("neumann"), obj: Article("overlord"), act: Read},
-	{sub: User("neumann"), obj: Article("manhatton"), act: ReadWrite},
-	{sub: User("karman"), obj: Article("manhatton"), act: ReadWriteExec},
-	{sub: User("alan"), obj: Article("apollo"), act: Read},
-	{sub: User("karman"), obj: Article("apollo"), act: ReadWriteExec},
-}
-
 var _ = Describe("base permitter implementation", func() {
+	var permitters = []struct {
+		name string
+		p    Permission
+	}{
+		{
+			name: "thin",
+			p:    newThinPermission(),
+		},
+		{
+			name: "synced",
+			p:    newSyncedPermission(newThinPermission()),
+		},
+		{
+			name: "subject grouped",
+			p:    newSubjectGroupedPermission(newFatGrouping()),
+		},
+		{
+			name: "object grouped",
+			p:    newObjectGroupedPermission(newFatGrouping()),
+		},
+		{
+			name: "both grouped",
+			p:    newBothGroupedPermission(newFatGrouping(), newFatGrouping()),
+		},
+	}
+
+	var initPermissions = []struct {
+		sub Subject
+		obj Object
+		act Action
+	}{
+		{sub: User("alan"), obj: Article("market garden"), act: ReadWriteExec},
+		{sub: User("karman"), obj: Article("market garden"), act: ReadWrite},
+		{sub: User("alan"), obj: Article("overlord"), act: ReadWriteExec},
+		{sub: User("neumann"), obj: Article("overlord"), act: Read},
+		{sub: User("neumann"), obj: Article("manhattan"), act: ReadWrite},
+		{sub: User("karman"), obj: Article("manhattan"), act: ReadWriteExec},
+		{sub: User("alan"), obj: Article("apollo"), act: Read},
+		{sub: User("karman"), obj: Article("apollo"), act: ReadWriteExec},
+	}
+
 	for _, tp := range permitters {
 		Context(tp.name, func() {
 			p := tp.p
@@ -86,7 +86,7 @@ var _ = Describe("base permitter implementation", func() {
 					User("alan"):   ReadWriteExec,
 					User("karman"): ReadWrite,
 				}),
-				Entry("permissions to manhatton", Article("manhatton"), map[Subject]Action{
+				Entry("permissions to manhattan", Article("manhattan"), map[Subject]Action{
 					User("neumann"): ReadWrite,
 					User("karman"):  ReadWriteExec,
 				}),
@@ -103,7 +103,7 @@ var _ = Describe("base permitter implementation", func() {
 				}),
 				Entry("permissions for neumann", User("neumann"), map[Object]Action{
 					Article("overlord"):  Read,
-					Article("manhatton"): ReadWrite,
+					Article("manhattan"): ReadWrite,
 				}),
 			)
 
@@ -111,9 +111,9 @@ var _ = Describe("base permitter implementation", func() {
 				func(sub Subject, obj Object, act Action) {
 					Expect(p.PermittedActions(sub, obj)).To(Equal(act))
 				},
-				Entry("alan to manhatton", User("alan"), Article("manhatton"), None),
+				Entry("alan to manhattan", User("alan"), Article("manhattan"), None),
 				Entry("alan to overlord", User("alan"), Article("overlord"), ReadWriteExec),
-				Entry("karman to manhatton", User("karman"), Article("manhatton"), ReadWriteExec),
+				Entry("karman to manhattan", User("karman"), Article("manhattan"), ReadWriteExec),
 			)
 		})
 	}

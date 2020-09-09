@@ -34,9 +34,11 @@ func (p *subjectGroupedPermission) Shall(sub Subject, obj Object, act Action) (b
 	}
 
 	for group := range groups {
-		allowed |= perms[group]
-		if allowed.Includes(act) {
-			return true, nil
+		if perm, ok := perms[group]; ok {
+			allowed |= perm
+			if allowed.Includes(act) {
+				return true, nil
+			}
 		}
 	}
 
