@@ -32,23 +32,23 @@ func loadUsersAndRoles() {
 
 var groupers = []struct {
 	name string
-	g    Grouper
+	g    Grouping
 }{
 	{
 		name: "slim",
-		g:    newSlimGrouper(),
+		g:    newSlimGrouping(),
 	},
 	{
 		name: "fat",
-		g:    newFatGrouper(),
+		g:    newFatGrouping(),
 	},
 	{
 		name: "synced fat",
-		g:    newSyncedGrouper(newFatGrouper()),
+		g:    newSyncedGrouping(newFatGrouping()),
 	},
 	{
 		name: "synced slim",
-		g:    newSyncedGrouper(newSlimGrouper()),
+		g:    newSyncedGrouping(newSlimGrouping()),
 	},
 }
 

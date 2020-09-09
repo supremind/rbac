@@ -2,22 +2,22 @@ package rbac
 
 import "fmt"
 
-var _ Permitter = (*thinPermitter)(nil)
+var _ Permission = (*thinPermission)(nil)
 
-// thinPermitter knows only direct subject-object-actions relationships
-type thinPermitter struct {
+// thinPermission knows only direct subject-object-actions relationships
+type thinPermission struct {
 	bySubject map[Subject]map[Object]Action
 	byObject  map[Object]map[Subject]Action
 }
 
-func newThinPermitter() *thinPermitter {
-	return &thinPermitter{
+func newThinPermission() *thinPermission {
+	return &thinPermission{
 		bySubject: make(map[Subject]map[Object]Action),
 		byObject:  make(map[Object]map[Subject]Action),
 	}
 }
 
-func (p *thinPermitter) Permit(sub Subject, obj Object, act Action) error {
+func (p *thinPermission) Permit(sub Subject, obj Object, act Action) error {
 	if _, ok := p.bySubject[sub]; !ok {
 		p.bySubject[sub] = make(map[Object]Action)
 	}
@@ -32,7 +32,7 @@ func (p *thinPermitter) Permit(sub Subject, obj Object, act Action) error {
 	return nil
 }
 
-func (p *thinPermitter) Revoke(sub Subject, obj Object, act Action) error {
+func (p *thinPermission) Revoke(sub Subject, obj Object, act Action) error {
 	if _, ok := p.bySubject[sub]; !ok {
 		return fmt.Errorf("%w: permission %s -[%s]-> %s", ErrNotFound, sub, obj, act)
 	}
@@ -52,7 +52,7 @@ func (p *thinPermitter) Revoke(sub Subject, obj Object, act Action) error {
 	return nil
 }
 
-func (p *thinPermitter) Shall(sub Subject, obj Object, act Action) (bool, error) {
+func (p *thinPermission) Shall(sub Subject, obj Object, act Action) (bool, error) {
 	if objs, ok := p.bySubject[sub]; ok {
 		if acts, ok := objs[obj]; ok {
 			return acts.Includes(act), nil
@@ -62,15 +62,15 @@ func (p *thinPermitter) Shall(sub Subject, obj Object, act Action) (bool, error)
 	return false, nil
 }
 
-func (p *thinPermitter) PermissionsTo(obj Object) (map[Subject]Action, error) {
+func (p *thinPermission) PermissionsTo(obj Object) (map[Subject]Action, error) {
 	return p.byObject[obj], nil
 }
 
-func (p *thinPermitter) PermissionsFor(sub Subject) (map[Object]Action, error) {
+func (p *thinPermission) PermissionsFor(sub Subject) (map[Object]Action, error) {
 	return p.bySubject[sub], nil
 }
 
-func (p *thinPermitter) PermittedActions(sub Subject, obj Object) (Action, error) {
+func (p *thinPermission) PermittedActions(sub Subject, obj Object) (Action, error) {
 	if _, ok := p.bySubject[sub]; !ok {
 		return 0, nil
 	}

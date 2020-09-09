@@ -2,26 +2,26 @@ package rbac
 
 import "fmt"
 
-var _ Grouper = (*slimGrouper)(nil)
+var _ Grouping = (*slimGrouping)(nil)
 
-// slimGrouper is a simplest implementation of Grouper interface
+// slimGrouping is a simplest implementation of Grouping interface
 // it is used as a prototype of concept and baseline for testing
-type slimGrouper struct {
+type slimGrouping struct {
 	parents  map[Entity]map[Group]struct{}
 	children map[Group]map[Entity]struct{}
 	maxDepth int
 }
 
-func newSlimGrouper() *slimGrouper {
-	return &slimGrouper{
+func newSlimGrouping() *slimGrouping {
+	return &slimGrouping{
 		parents:  make(map[Entity]map[Group]struct{}),
 		children: make(map[Group]map[Entity]struct{}),
 		maxDepth: 10,
 	}
 }
 
-// Join implements Grouper interface
-func (g *slimGrouper) Join(entity Entity, grp Group) error {
+// Join implements Grouping interface
+func (g *slimGrouping) Join(entity Entity, grp Group) error {
 	if g.parents[entity] == nil {
 		g.parents[entity] = make(map[Group]struct{}, 1)
 	}
@@ -36,7 +36,7 @@ func (g *slimGrouper) Join(entity Entity, grp Group) error {
 }
 
 // Leave implements Grouping interfaceJ
-func (g *slimGrouper) Leave(entity Entity, grp Group) error {
+func (g *slimGrouping) Leave(entity Entity, grp Group) error {
 	if g.parents[entity] == nil {
 		return fmt.Errorf("%w: grouping policy: %s -> %s", ErrNotFound, entity, grp)
 	} else if _, ok := g.parents[entity][grp]; !ok {
@@ -54,8 +54,8 @@ func (g *slimGrouper) Leave(entity Entity, grp Group) error {
 	return nil
 }
 
-// IsIn implements Grouper interface
-func (g *slimGrouper) IsIn(ind Individual, grp Group) (bool, error) {
+// IsIn implements Grouping interface
+func (g *slimGrouping) IsIn(ind Individual, grp Group) (bool, error) {
 	groups, err := g.GroupsOf(ind)
 	if err != nil {
 		return false, err
@@ -65,8 +65,8 @@ func (g *slimGrouper) IsIn(ind Individual, grp Group) (bool, error) {
 	return ok, nil
 }
 
-// AllGroups implements Grouper interface
-func (g *slimGrouper) AllGroups() (map[Group]struct{}, error) {
+// AllGroups implements Grouping interface
+func (g *slimGrouping) AllGroups() (map[Group]struct{}, error) {
 	groups := make(map[Group]struct{}, len(g.children))
 	for grp := range g.children {
 		groups[grp] = struct{}{}
@@ -74,8 +74,8 @@ func (g *slimGrouper) AllGroups() (map[Group]struct{}, error) {
 	return groups, nil
 }
 
-// AllIndividuals implements Grouper interface
-func (g *slimGrouper) AllIndividuals() (map[Individual]struct{}, error) {
+// AllIndividuals implements Grouping interface
+func (g *slimGrouping) AllIndividuals() (map[Individual]struct{}, error) {
 	invs := make(map[Individual]struct{}, len(g.parents))
 	for entity := range g.parents {
 		if ind, ok := entity.(Individual); ok {
@@ -85,8 +85,8 @@ func (g *slimGrouper) AllIndividuals() (map[Individual]struct{}, error) {
 	return invs, nil
 }
 
-// GroupsOf implements Grouper interface
-func (g *slimGrouper) GroupsOf(ent Entity) (map[Group]struct{}, error) {
+// GroupsOf implements Grouping interface
+func (g *slimGrouping) GroupsOf(ent Entity) (map[Group]struct{}, error) {
 	ancients := make(map[Group]struct{})
 
 	var query func(entity Entity, depth int)
@@ -104,8 +104,8 @@ func (g *slimGrouper) GroupsOf(ent Entity) (map[Group]struct{}, error) {
 	return ancients, nil
 }
 
-// IndividualsIn implements Grouper interface
-func (g *slimGrouper) IndividualsIn(grp Group) (map[Individual]struct{}, error) {
+// IndividualsIn implements Grouping interface
+func (g *slimGrouping) IndividualsIn(grp Group) (map[Individual]struct{}, error) {
 	children := make(map[Individual]struct{})
 
 	var query func(grp Group, depth int)
@@ -126,18 +126,18 @@ func (g *slimGrouper) IndividualsIn(grp Group) (map[Individual]struct{}, error) 
 	return children, nil
 }
 
-// ImmediateGroupsOf implements Grouper interface
-func (g *slimGrouper) ImmediateGroupsOf(entity Entity) (map[Group]struct{}, error) {
+// ImmediateGroupsOf implements Grouping interface
+func (g *slimGrouping) ImmediateGroupsOf(entity Entity) (map[Group]struct{}, error) {
 	return g.parents[entity], nil
 }
 
-// ImmediateEntitiesIn implements Grouper interface
-func (g *slimGrouper) ImmediateEntitiesIn(grp Group) (map[Entity]struct{}, error) {
+// ImmediateEntitiesIn implements Grouping interface
+func (g *slimGrouping) ImmediateEntitiesIn(grp Group) (map[Entity]struct{}, error) {
 	return g.children[grp], nil
 }
 
-// RemoveGroup implements Grouper interface
-func (g *slimGrouper) RemoveGroup(grp Group) error {
+// RemoveGroup implements Grouping interface
+func (g *slimGrouping) RemoveGroup(grp Group) error {
 	children := g.children[grp]
 	parents := g.parents[grp]
 
@@ -154,8 +154,8 @@ func (g *slimGrouper) RemoveGroup(grp Group) error {
 	return nil
 }
 
-// RemoveIndividual implements Grouper interface
-func (g *slimGrouper) RemoveIndividual(ind Individual) error {
+// RemoveIndividual implements Grouping interface
+func (g *slimGrouping) RemoveIndividual(ind Individual) error {
 	parents := g.parents[ind]
 	delete(g.parents, ind)
 

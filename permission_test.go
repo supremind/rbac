@@ -10,15 +10,27 @@ import (
 
 var permitters = []struct {
 	name string
-	p    Permitter
+	p    Permission
 }{
 	{
 		name: "thin",
-		p:    newThinPermitter(),
+		p:    newThinPermission(),
 	},
 	{
 		name: "synced",
-		p:    newSyncedPermitter(newThinPermitter()),
+		p:    newSyncedPermission(newThinPermission()),
+	},
+	{
+		name: "thin with subject grouping",
+		p:    newSubjectGroupedPermission(newFatGrouping()),
+	},
+	{
+		name: "thin with object grouping",
+		p:    newObjectGroupedPermission(newFatGrouping()),
+	},
+	{
+		name: "thin with both groupped",
+		p:    newBothGroupedPermission(newFatGrouping(), newFatGrouping()),
 	},
 }
 
@@ -37,7 +49,7 @@ var initPermissions = []struct {
 	{sub: User("karman"), obj: Article("apollo"), act: ReadWriteExec},
 }
 
-var _ = Describe("permitter implementation", func() {
+var _ = Describe("base permitter implementation", func() {
 	for _, tp := range permitters {
 		Context(tp.name, func() {
 			p := tp.p

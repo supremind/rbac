@@ -1,11 +1,11 @@
 package rbac
 
-var _ Grouper = (*fatGrouper)(nil)
+var _ Grouping = (*fatGrouping)(nil)
 
-// fatGrouper caches more information to speed up querying
-// fatGrouper is faster on quering, and slower on removing comprared to slimGrouper
-type fatGrouper struct {
-	slim slimGrouper // no sense to use another implementation
+// fatGrouping caches more information to speed up querying
+// fatGrouping is faster on quering, and slower on removing comprared to slimGrouping
+type fatGrouping struct {
+	slim slimGrouping // no sense to use another implementation
 
 	// entity => all groups it belongs to
 	groups map[Entity]map[Group]struct{}
@@ -16,9 +16,9 @@ type fatGrouper struct {
 	allGroups      map[Group]struct{}
 }
 
-func newFatGrouper() *fatGrouper {
-	return &fatGrouper{
-		slim:           *newSlimGrouper(),
+func newFatGrouping() *fatGrouping {
+	return &fatGrouping{
+		slim:           *newSlimGrouping(),
 		groups:         make(map[Entity]map[Group]struct{}),
 		individuals:    make(map[Group]map[Individual]struct{}),
 		allIndividuals: make(map[Individual]struct{}),
@@ -26,7 +26,7 @@ func newFatGrouper() *fatGrouper {
 	}
 }
 
-func (g *fatGrouper) Join(ent Entity, group Group) error {
+func (g *fatGrouping) Join(ent Entity, group Group) error {
 	if e := g.slim.Join(ent, group); e != nil {
 		return e
 	}
@@ -58,7 +58,7 @@ func (g *fatGrouper) Join(ent Entity, group Group) error {
 	return nil
 }
 
-func (g *fatGrouper) Leave(ent Entity, group Group) error {
+func (g *fatGrouping) Leave(ent Entity, group Group) error {
 	if e := g.slim.Leave(ent, group); e != nil {
 		return e
 	}
@@ -72,7 +72,7 @@ func (g *fatGrouper) Leave(ent Entity, group Group) error {
 	return nil
 }
 
-func (g *fatGrouper) IsIn(individual Individual, group Group) (bool, error) {
+func (g *fatGrouping) IsIn(individual Individual, group Group) (bool, error) {
 	if individuals, ok := g.individuals[group]; ok {
 		_, ok := individuals[individual]
 		return ok, nil
@@ -80,31 +80,31 @@ func (g *fatGrouper) IsIn(individual Individual, group Group) (bool, error) {
 	return false, nil
 }
 
-func (g *fatGrouper) AllGroups() (map[Group]struct{}, error) {
+func (g *fatGrouping) AllGroups() (map[Group]struct{}, error) {
 	return g.allGroups, nil
 }
 
-func (g *fatGrouper) AllIndividuals() (map[Individual]struct{}, error) {
+func (g *fatGrouping) AllIndividuals() (map[Individual]struct{}, error) {
 	return g.allIndividuals, nil
 }
 
-func (g *fatGrouper) GroupsOf(ent Entity) (map[Group]struct{}, error) {
+func (g *fatGrouping) GroupsOf(ent Entity) (map[Group]struct{}, error) {
 	return g.groups[ent], nil
 }
 
-func (g *fatGrouper) IndividualsIn(group Group) (map[Individual]struct{}, error) {
+func (g *fatGrouping) IndividualsIn(group Group) (map[Individual]struct{}, error) {
 	return g.individuals[group], nil
 }
 
-func (g *fatGrouper) ImmediateGroupsOf(ent Entity) (map[Group]struct{}, error) {
+func (g *fatGrouping) ImmediateGroupsOf(ent Entity) (map[Group]struct{}, error) {
 	return g.slim.ImmediateGroupsOf(ent)
 }
 
-func (g *fatGrouper) ImmediateEntitiesIn(group Group) (map[Entity]struct{}, error) {
+func (g *fatGrouping) ImmediateEntitiesIn(group Group) (map[Entity]struct{}, error) {
 	return g.slim.ImmediateEntitiesIn(group)
 }
 
-func (g *fatGrouper) RemoveGroup(group Group) error {
+func (g *fatGrouping) RemoveGroup(group Group) error {
 	delete(g.allGroups, group)
 	delete(g.individuals, group)
 	delete(g.groups, group)
@@ -136,7 +136,7 @@ func (g *fatGrouper) RemoveGroup(group Group) error {
 	return nil
 }
 
-func (g *fatGrouper) RemoveIndividual(individual Individual) error {
+func (g *fatGrouping) RemoveIndividual(individual Individual) error {
 	delete(g.allIndividuals, individual)
 	delete(g.groups, individual)
 
@@ -158,7 +158,7 @@ func (g *fatGrouper) RemoveIndividual(individual Individual) error {
 	return nil
 }
 
-func (g *fatGrouper) rebuildGroups(ent Entity) error {
+func (g *fatGrouping) rebuildGroups(ent Entity) error {
 	// rebuild groups for entity
 	groups, e := g.ImmediateGroupsOf(ent)
 	if e != nil {
@@ -189,7 +189,7 @@ func (g *fatGrouper) rebuildGroups(ent Entity) error {
 	return nil
 }
 
-func (g *fatGrouper) rebuildIndividuals(group Group) error {
+func (g *fatGrouping) rebuildIndividuals(group Group) error {
 	// rebuild individuals of group
 	subs, e := g.ImmediateEntitiesIn(group)
 	if e != nil {

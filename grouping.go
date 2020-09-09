@@ -1,9 +1,9 @@
 package rbac
 
-// Grouper defines individual-group relationships,
+// Grouping defines individual-group relationships,
 // an individual could belong to any number of groups,
 // and a group could contain any individuals or other groups.
-type Grouper interface {
+type Grouping interface {
 	Join(Entity, Group) error
 	Leave(Entity, Group) error
 
