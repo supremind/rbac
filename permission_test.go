@@ -16,6 +16,10 @@ var permitters = []struct {
 		name: "thin",
 		p:    newThinPermitter(),
 	},
+	{
+		name: "synced",
+		p:    newSyncedPermitter(newThinPermitter()),
+	},
 }
 
 var initPermissions = []struct {
