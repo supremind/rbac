@@ -1,20 +1,12 @@
 package rbac
 
-type Action interface {
-	Action() string
-}
-
-type Permission struct {
-	Sub Subject
-	Obj Object
-	Act Action
-}
-
 type Permitter interface {
-	Permit(Permission) error
-	Revoke(Permission) error
-	Shall(Permission) (bool, error)
+	Permit(Subject, Object, Action) error
+	Revoke(Subject, Object, Action) error
+	Shall(Subject, Object, Action) (bool, error)
 
-	PermissionsTo(Object) ([]Permission, error)
-	PermissionsFor(Subject) ([]Permission, error)
+	PermissionsTo(Object) (map[Subject]Action, error)
+	PermissionsFor(Subject) (map[Object]Action, error)
+
+	PermittedActions(Subject, Object) (Action, error)
 }
