@@ -3,6 +3,7 @@ package rbac
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 type Grouping interface {
@@ -24,8 +25,9 @@ type Grouping interface {
 	RemoveUser(User) error
 }
 
-var _ Grouping = (*simpleGrouping)(nil)
+var _ Grouping = (*slimGrouping)(nil)
 var _ Grouping = (*fatGrouping)(nil)
+var _ Grouping = (*syncedGrouping)(nil)
 
 type Subject interface {
 	subject() string
@@ -56,15 +58,15 @@ func ParseSubject(sub string) (Subject, error) {
 	return nil, ErrInvlaidSubject
 }
 
-// simpleGrouping stores lest information and does everything in memory
-type simpleGrouping struct {
+// slimGrouping stores lest information and does everything in memory
+type slimGrouping struct {
 	parents  map[Subject]map[Role]struct{}
 	children map[Role]map[Subject]struct{}
 	maxDepth int
 }
 
-func newSimpleGrouping() *simpleGrouping {
-	return &simpleGrouping{
+func newSlimGrouping() *slimGrouping {
+	return &slimGrouping{
 		parents:  make(map[Subject]map[Role]struct{}),
 		children: make(map[Role]map[Subject]struct{}),
 		maxDepth: 10,
@@ -72,7 +74,7 @@ func newSimpleGrouping() *simpleGrouping {
 }
 
 // Join implements Grouping interface
-func (g *simpleGrouping) Join(sub Subject, role Role) error {
+func (g *slimGrouping) Join(sub Subject, role Role) error {
 	if g.parents[sub] == nil {
 		g.parents[sub] = make(map[Role]struct{}, 1)
 	}
@@ -87,7 +89,7 @@ func (g *simpleGrouping) Join(sub Subject, role Role) error {
 }
 
 // Leave implements Grouping interfaceJ
-func (g *simpleGrouping) Leave(sub Subject, role Role) error {
+func (g *slimGrouping) Leave(sub Subject, role Role) error {
 	if g.parents[sub] == nil {
 		return fmt.Errorf("%w: grouping rule: %s -> %s", ErrNotFound, sub.subject(), role.subject())
 	}
@@ -102,7 +104,7 @@ func (g *simpleGrouping) Leave(sub Subject, role Role) error {
 }
 
 // IsIn implements Grouping interface
-func (g *simpleGrouping) IsIn(user User, role Role) (bool, error) {
+func (g *slimGrouping) IsIn(user User, role Role) (bool, error) {
 	roles, err := g.RolesOf(user)
 	if err != nil {
 		return false, err
@@ -113,7 +115,7 @@ func (g *simpleGrouping) IsIn(user User, role Role) (bool, error) {
 }
 
 // AllRoles implements Grouping interface
-func (g *simpleGrouping) AllRoles() (map[Role]struct{}, error) {
+func (g *slimGrouping) AllRoles() (map[Role]struct{}, error) {
 	roles := make(map[Role]struct{}, len(g.children))
 	for role := range g.children {
 		roles[role] = struct{}{}
@@ -122,7 +124,7 @@ func (g *simpleGrouping) AllRoles() (map[Role]struct{}, error) {
 }
 
 // AllUsers implements Grouping interface
-func (g *simpleGrouping) AllUsers() (map[User]struct{}, error) {
+func (g *slimGrouping) AllUsers() (map[User]struct{}, error) {
 	users := make(map[User]struct{}, len(g.parents))
 	for sub := range g.parents {
 		if user, ok := sub.(User); ok {
@@ -133,7 +135,7 @@ func (g *simpleGrouping) AllUsers() (map[User]struct{}, error) {
 }
 
 // RolesOf implements Grouping interface
-func (g *simpleGrouping) RolesOf(user User) (map[Role]struct{}, error) {
+func (g *slimGrouping) RolesOf(user User) (map[Role]struct{}, error) {
 	ancients := make(map[Role]struct{})
 
 	var query func(sub Subject, depth int)
@@ -152,7 +154,7 @@ func (g *simpleGrouping) RolesOf(user User) (map[Role]struct{}, error) {
 }
 
 // UsersOf implements Grouping interface
-func (g *simpleGrouping) UsersOf(role Role) (map[User]struct{}, error) {
+func (g *slimGrouping) UsersOf(role Role) (map[User]struct{}, error) {
 	children := make(map[User]struct{})
 
 	var query func(role Role, depth int)
@@ -173,16 +175,16 @@ func (g *simpleGrouping) UsersOf(role Role) (map[User]struct{}, error) {
 	return children, nil
 }
 
-func (g *simpleGrouping) DirectRolesOf(sub Subject) (map[Role]struct{}, error) {
+func (g *slimGrouping) DirectRolesOf(sub Subject) (map[Role]struct{}, error) {
 	return g.parents[sub], nil
 }
 
-func (g *simpleGrouping) DirectSubjectsOf(role Role) (map[Subject]struct{}, error) {
+func (g *slimGrouping) DirectSubjectsOf(role Role) (map[Subject]struct{}, error) {
 	return g.children[role], nil
 }
 
 // RemoveRole implements Grouping interface
-func (g *simpleGrouping) RemoveRole(role Role) error {
+func (g *slimGrouping) RemoveRole(role Role) error {
 	children := g.children[role]
 	parents := g.parents[role]
 
@@ -200,7 +202,7 @@ func (g *simpleGrouping) RemoveRole(role Role) error {
 }
 
 // RemoveUser implements Grouping interface
-func (g *simpleGrouping) RemoveUser(user User) error {
+func (g *slimGrouping) RemoveUser(user User) error {
 	parents := g.parents[user]
 	delete(g.parents, user)
 
@@ -213,25 +215,35 @@ func (g *simpleGrouping) RemoveUser(user User) error {
 // fatGrouping stores more information to speed up querying
 // fatGrouping is faster on quering, and slower on removing comprared to the innter Grouping
 type fatGrouping struct {
-	Grouping
+	slim slimGrouping // no sense to use other implementations
 
 	// subject => all roles it belongs to
 	roles map[Subject]map[Role]struct{}
 	// role => all users belongs to it
 	users map[Role]map[User]struct{}
+
+	allUsers map[User]struct{}
+	allRoles map[Role]struct{}
 }
 
-func newFatGrouping(g Grouping) *fatGrouping {
+func newFatGrouping() *fatGrouping {
 	return &fatGrouping{
-		Grouping: g,
+		slim:     *newSlimGrouping(),
 		roles:    make(map[Subject]map[Role]struct{}),
 		users:    make(map[Role]map[User]struct{}),
+		allUsers: make(map[User]struct{}),
+		allRoles: make(map[Role]struct{}),
 	}
 }
 
 func (g *fatGrouping) Join(sub Subject, role Role) error {
-	if e := g.Grouping.Join(sub, role); e != nil {
+	if e := g.slim.Join(sub, role); e != nil {
 		return e
+	}
+
+	g.allRoles[role] = struct{}{}
+	if user, ok := sub.(User); ok {
+		g.allUsers[user] = struct{}{}
 	}
 
 	if g.roles[sub] == nil {
@@ -245,8 +257,8 @@ func (g *fatGrouping) Join(sub Subject, role Role) error {
 	if g.users[role] == nil {
 		g.users[role] = make(map[User]struct{})
 	}
-	if su, ok := sub.(User); ok {
-		g.users[role][su] = struct{}{}
+	if user, ok := sub.(User); ok {
+		g.users[role][user] = struct{}{}
 	} else {
 		for u := range g.users[sub.(Role)] {
 			g.users[role][u] = struct{}{}
@@ -257,8 +269,13 @@ func (g *fatGrouping) Join(sub Subject, role Role) error {
 }
 
 func (g *fatGrouping) Leave(sub Subject, role Role) error {
-	if e := g.Grouping.Leave(sub, role); e != nil {
+	if e := g.slim.Leave(sub, role); e != nil {
 		return e
+	}
+
+	delete(g.allRoles, role)
+	if user, ok := sub.(User); ok {
+		delete(g.allUsers, user)
 	}
 
 	if e := g.rebuildRoles(sub); e != nil {
@@ -275,7 +292,19 @@ func (g *fatGrouping) IsIn(user User, role Role) (bool, error) {
 		_, ok := users[user]
 		return ok, nil
 	}
+	// if roles, ok := g.roles[user]; ok {
+	// 	_, ok := roles[role]
+	// 	return ok, nil
+	// }
 	return false, nil
+}
+
+func (g *fatGrouping) AllRoles() (map[Role]struct{}, error) {
+	return g.allRoles, nil
+}
+
+func (g *fatGrouping) AllUsers() (map[User]struct{}, error) {
+	return g.allUsers, nil
 }
 
 func (g *fatGrouping) RolesOf(user User) (map[Role]struct{}, error) {
@@ -286,17 +315,27 @@ func (g *fatGrouping) UsersOf(role Role) (map[User]struct{}, error) {
 	return g.users[role], nil
 }
 
+func (g *fatGrouping) DirectRolesOf(sub Subject) (map[Role]struct{}, error) {
+	return g.slim.DirectRolesOf(sub)
+}
+
+func (g *fatGrouping) DirectSubjectsOf(role Role) (map[Subject]struct{}, error) {
+	return g.slim.DirectSubjectsOf(role)
+}
+
 func (g *fatGrouping) RemoveRole(role Role) error {
-	subs, e := g.Grouping.DirectSubjectsOf(role)
+	delete(g.allRoles, role)
+
+	subs, e := g.DirectSubjectsOf(role)
 	if e != nil {
 		return e
 	}
-	roles, e := g.Grouping.DirectRolesOf(role)
+	roles, e := g.DirectRolesOf(role)
 	if e != nil {
 		return e
 	}
 
-	if e := g.Grouping.RemoveRole(role); e != nil {
+	if e := g.slim.RemoveRole(role); e != nil {
 		return e
 	}
 
@@ -315,12 +354,14 @@ func (g *fatGrouping) RemoveRole(role Role) error {
 }
 
 func (g *fatGrouping) RemoveUser(user User) error {
-	roles, e := g.Grouping.DirectRolesOf(user)
+	delete(g.allUsers, user)
+
+	roles, e := g.DirectRolesOf(user)
 	if e != nil {
 		return e
 	}
 
-	if e := g.Grouping.RemoveUser(user); e != nil {
+	if e := g.slim.RemoveUser(user); e != nil {
 		return e
 	}
 
@@ -335,7 +376,7 @@ func (g *fatGrouping) RemoveUser(user User) error {
 
 func (g *fatGrouping) rebuildRoles(sub Subject) error {
 	// rebuild roles for subject
-	roles, e := g.Grouping.DirectRolesOf(sub)
+	roles, e := g.DirectRolesOf(sub)
 	if e != nil {
 		return e
 	}
@@ -347,14 +388,17 @@ func (g *fatGrouping) rebuildRoles(sub Subject) error {
 		}
 	}
 
-	// rebuild roles for all roles of role
-	subs, e := g.Grouping.DirectRolesOf(sub)
-	if e != nil {
-		return e
-	}
-	for sub := range subs {
-		if e := g.rebuildRoles(sub); e != nil {
+	if role, ok := sub.(Role); ok {
+		// rebuild roles for all subjects of sub
+		// fixme: some subject may be rebuilt more than once
+		subs, e := g.DirectSubjectsOf(role)
+		if e != nil {
 			return e
+		}
+		for sub := range subs {
+			if e := g.rebuildRoles(sub); e != nil {
+				return e
+			}
 		}
 	}
 
@@ -363,7 +407,7 @@ func (g *fatGrouping) rebuildRoles(sub Subject) error {
 
 func (g *fatGrouping) rebuildUsers(role Role) error {
 	// rebuild users of role
-	subs, e := g.Grouping.DirectSubjectsOf(role)
+	subs, e := g.DirectSubjectsOf(role)
 	if e != nil {
 		return e
 	}
@@ -380,7 +424,7 @@ func (g *fatGrouping) rebuildUsers(role Role) error {
 	}
 
 	// rebuild users for all roles of role
-	roles, e := g.Grouping.DirectRolesOf(role)
+	roles, e := g.DirectRolesOf(role)
 	if e != nil {
 		return e
 	}
@@ -391,4 +435,91 @@ func (g *fatGrouping) rebuildUsers(role Role) error {
 	}
 
 	return nil
+}
+
+type syncedGrouping struct {
+	g Grouping
+	sync.RWMutex
+}
+
+func newSyncedGrouping(g Grouping) *syncedGrouping {
+	return &syncedGrouping{
+		g: g,
+	}
+}
+
+func (g *syncedGrouping) Join(sub Subject, role Role) error {
+	g.Lock()
+	defer g.Unlock()
+	return g.g.Join(sub, role)
+}
+
+// Leave implements Grouping interface
+func (g *syncedGrouping) Leave(sub Subject, role Role) error {
+	g.Lock()
+	defer g.Unlock()
+	return g.g.Leave(sub, role)
+}
+
+//  IsIn implements Grouping interface
+func (g *syncedGrouping) IsIn(user User, role Role) (bool, error) {
+	g.RLock()
+	defer g.RUnlock()
+	return g.g.IsIn(user, role)
+}
+
+//  AllRoles implements Grouping interface
+func (g *syncedGrouping) AllRoles() (map[Role]struct{}, error) {
+	g.RLock()
+	defer g.RUnlock()
+	return g.g.AllRoles()
+}
+
+// AllUsers implements Grouping interface
+func (g *syncedGrouping) AllUsers() (map[User]struct{}, error) {
+	g.RLock()
+	defer g.RUnlock()
+	return g.g.AllUsers()
+}
+
+// RolesOf implements Grouping interface
+func (g *syncedGrouping) RolesOf(user User) (map[Role]struct{}, error) {
+	g.RLock()
+	defer g.RUnlock()
+	return g.g.RolesOf(user)
+}
+
+// UsersOf implements Grouping interface
+func (g *syncedGrouping) UsersOf(role Role) (map[User]struct{}, error) {
+	g.RLock()
+	defer g.RUnlock()
+	return g.g.UsersOf(role)
+}
+
+//  DirectRolesOf implements Grouping interface
+func (g *syncedGrouping) DirectRolesOf(sub Subject) (map[Role]struct{}, error) {
+	g.RLock()
+	defer g.RUnlock()
+	return g.g.DirectRolesOf(sub)
+}
+
+// DirectSubjectsOf implements Grouping interface
+func (g *syncedGrouping) DirectSubjectsOf(role Role) (map[Subject]struct{}, error) {
+	g.RLock()
+	defer g.RUnlock()
+	return g.g.DirectSubjectsOf(role)
+}
+
+// RemoveRole implements Grouping interface
+func (g *syncedGrouping) RemoveRole(role Role) error {
+	g.Lock()
+	defer g.Unlock()
+	return g.g.RemoveRole(role)
+}
+
+// RemoveUser implements Grouping interface
+func (g *syncedGrouping) RemoveUser(user User) error {
+	g.Lock()
+	defer g.Unlock()
+	return g.g.RemoveUser(user)
 }
