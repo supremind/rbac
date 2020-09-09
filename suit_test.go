@@ -12,10 +12,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGrouping(t *testing.T) {
+func TestRBAC(t *testing.T) {
 	RegisterFailHandler(Fail)
 	loadUsersAndRoles()
-	RunSpecs(t, "user role grouping")
+	RunSpecs(t, "rbac test suit")
 }
 
 func haveKeys(keys ...interface{}) types.GomegaMatcher {

@@ -30,7 +30,7 @@ func loadUsersAndRoles() {
 	}
 }
 
-var groupings = []struct {
+var groupers = []struct {
 	name string
 	g    Grouper
 }{
@@ -52,11 +52,11 @@ var groupings = []struct {
 	},
 }
 
-var _ = Describe("grouping implementation", func() {
+var _ = Describe("grouper implementation", func() {
 	Expect(userRoles).NotTo(BeEmpty())
 	Expect(roleUsers).NotTo(BeEmpty())
 
-	for _, tg := range groupings {
+	for _, tg := range groupers {
 		Context(tg.name, func() {
 			g := tg.g
 
