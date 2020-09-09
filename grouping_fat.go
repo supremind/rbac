@@ -2,10 +2,10 @@ package rbac
 
 var _ Grouping = (*fatGrouping)(nil)
 
-// fatGrouping stores more information to speed up querying
+// fatGrouping caches more information to speed up querying
 // fatGrouping is faster on quering, and slower on removing comprared to slimGrouping
 type fatGrouping struct {
-	slim slimGrouping // no sense to use other implementations
+	slim slimGrouping // no sense to use another implementation
 
 	// subject => all roles it belongs to
 	roles map[Subject]map[Role]struct{}
@@ -40,8 +40,8 @@ func (g *fatGrouping) Join(sub Subject, role Role) error {
 		g.roles[sub] = make(map[Role]struct{})
 	}
 	g.roles[sub][role] = struct{}{}
-	for r := range g.roles[role] {
-		g.roles[sub][r] = struct{}{}
+	for rr := range g.roles[role] {
+		g.roles[sub][rr] = struct{}{}
 	}
 
 	if g.users[role] == nil {
@@ -63,11 +63,6 @@ func (g *fatGrouping) Leave(sub Subject, role Role) error {
 		return e
 	}
 
-	delete(g.allRoles, role)
-	if user, ok := sub.(User); ok {
-		delete(g.allUsers, user)
-	}
-
 	if e := g.rebuildRoles(sub); e != nil {
 		return e
 	}
@@ -82,10 +77,6 @@ func (g *fatGrouping) IsIn(user User, role Role) (bool, error) {
 		_, ok := users[user]
 		return ok, nil
 	}
-	// if roles, ok := g.roles[user]; ok {
-	// 	_, ok := roles[role]
-	// 	return ok, nil
-	// }
 	return false, nil
 }
 
@@ -115,6 +106,8 @@ func (g *fatGrouping) DirectSubjectsOf(role Role) (map[Subject]struct{}, error) 
 
 func (g *fatGrouping) RemoveRole(role Role) error {
 	delete(g.allRoles, role)
+	delete(g.users, role)
+	delete(g.roles, role)
 
 	subs, e := g.DirectSubjectsOf(role)
 	if e != nil {
@@ -145,6 +138,7 @@ func (g *fatGrouping) RemoveRole(role Role) error {
 
 func (g *fatGrouping) RemoveUser(user User) error {
 	delete(g.allUsers, user)
+	delete(g.roles, user)
 
 	roles, e := g.DirectRolesOf(user)
 	if e != nil {
@@ -214,6 +208,7 @@ func (g *fatGrouping) rebuildUsers(role Role) error {
 	}
 
 	// rebuild users for all roles of role
+	// fixme: some role may be rebuilt more than once
 	roles, e := g.DirectRolesOf(role)
 	if e != nil {
 		return e

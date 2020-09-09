@@ -39,10 +39,14 @@ func (g *slimGrouping) Join(sub Subject, role Role) error {
 func (g *slimGrouping) Leave(sub Subject, role Role) error {
 	if g.parents[sub] == nil {
 		return fmt.Errorf("%w: grouping rule: %s -> %s", ErrNotFound, sub.subject(), role.subject())
+	} else if _, ok := g.parents[sub][role]; !ok {
+		return fmt.Errorf("%w: grouping rule: %s -> %s", ErrNotFound, sub.subject(), role.subject())
 	}
 	delete(g.parents[sub], role)
 
 	if g.children[role] == nil {
+		return fmt.Errorf("%w: grouping rule: %s -> %s", ErrNotFound, role.subject(), sub.subject())
+	} else if _, ok := g.children[role][sub]; !ok {
 		return fmt.Errorf("%w: grouping rule: %s -> %s", ErrNotFound, role.subject(), sub.subject())
 	}
 	delete(g.children[role], sub)
