@@ -51,10 +51,10 @@ func (g *syncedGrouper) AllIndividuals() (map[Individual]struct{}, error) {
 }
 
 // GroupsOf implements Grouper interface
-func (g *syncedGrouper) GroupsOf(individual Individual) (map[Group]struct{}, error) {
+func (g *syncedGrouper) GroupsOf(ent Entity) (map[Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.GroupsOf(individual)
+	return g.g.GroupsOf(ent)
 }
 
 // IndividualsIn implements Grouper interface

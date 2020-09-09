@@ -85,7 +85,7 @@ var _ = Describe("grouper implementation", func() {
 
 			Context("querying roles of user", func() {
 				for user, roles := range userRoles {
-					It(fmt.Sprintf("should know roles of %s", user.subject()), func() {
+					It(fmt.Sprintf("should know roles of %s", user), func() {
 						Expect(g.GroupsOf(user)).To(haveExactKeys(func() []interface{} {
 							is := make([]interface{}, 0, len(roles))
 							for _, role := range roles {
@@ -99,7 +99,7 @@ var _ = Describe("grouper implementation", func() {
 
 			Context("querying users of role", func() {
 				for role, users := range roleUsers {
-					It(fmt.Sprintf("should know users of %s", role.subject()), func() {
+					It(fmt.Sprintf("should know users of %s", role), func() {
 						Expect(g.IndividualsIn(role)).To(haveExactKeys(func() []interface{} {
 							is := make([]interface{}, 0, len(users))
 							for _, user := range users {
@@ -115,7 +115,7 @@ var _ = Describe("grouper implementation", func() {
 				for user, roles := range userRoles {
 					for _, role := range roles {
 						user, role := user, role
-						It(fmt.Sprintf("should know %s is in %s", user.subject(), role.subject()), func() {
+						It(fmt.Sprintf("should know %s is in %s", user, role), func() {
 							Expect(g.IsIn(user, role)).To(BeTrue())
 						})
 					}
@@ -132,7 +132,7 @@ var _ = Describe("grouper implementation", func() {
 					{user: User("6"), role: Role("3_1")},
 					{user: User("6"), role: Role("3_2")},
 				} {
-					It(fmt.Sprintf("should know %s is not in %s", tc.user.subject(), tc.role.subject()), func() {
+					It(fmt.Sprintf("should know %s is not in %s", tc.user, tc.role), func() {
 						Expect(g.IsIn(tc.user, tc.role)).To(BeFalse())
 					})
 				}
@@ -141,9 +141,9 @@ var _ = Describe("grouper implementation", func() {
 			DescribeTable("user leaves role",
 				func(user User, role Role) {
 					Expect(g.Leave(user, role)).To(Succeed())
-					Expect(g.GroupsOf(user)).NotTo(HaveKey(role), fmt.Sprintf("%s should not be in roles of %s", role.subject(), user.subject()))
-					Expect(g.IndividualsIn(role)).NotTo(HaveKey(user), fmt.Sprintf("%s should not be in users of %s", user.subject(), role.subject()))
-					Expect(g.IsIn(user, role)).NotTo(BeTrue(), fmt.Sprintf("%s should not be in %s", user.subject(), role.subject()))
+					Expect(g.GroupsOf(user)).NotTo(HaveKey(role), fmt.Sprintf("%s should not be in roles of %s", role, user))
+					Expect(g.IndividualsIn(role)).NotTo(HaveKey(user), fmt.Sprintf("%s should not be in users of %s", user, role))
+					Expect(g.IsIn(user, role)).NotTo(BeTrue(), fmt.Sprintf("%s should not be in %s", user, role))
 				},
 				Entry("user 1 leaves role 3_1", User("1"), Role("3_1")),
 				Entry("user 7 leaves role 5_2", User("7"), Role("5_2")),

@@ -86,7 +86,7 @@ func (g *slimGrouper) AllIndividuals() (map[Individual]struct{}, error) {
 }
 
 // GroupsOf implements Grouper interface
-func (g *slimGrouper) GroupsOf(ind Individual) (map[Group]struct{}, error) {
+func (g *slimGrouper) GroupsOf(ent Entity) (map[Group]struct{}, error) {
 	ancients := make(map[Group]struct{})
 
 	var query func(entity Entity, depth int)
@@ -99,7 +99,7 @@ func (g *slimGrouper) GroupsOf(ind Individual) (map[Group]struct{}, error) {
 			query(r, depth+1)
 		}
 	}
-	query(ind, 0)
+	query(ent, 0)
 
 	return ancients, nil
 }

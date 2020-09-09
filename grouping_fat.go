@@ -88,8 +88,8 @@ func (g *fatGrouper) AllIndividuals() (map[Individual]struct{}, error) {
 	return g.allIndividuals, nil
 }
 
-func (g *fatGrouper) GroupsOf(individual Individual) (map[Group]struct{}, error) {
-	return g.groups[individual], nil
+func (g *fatGrouper) GroupsOf(ent Entity) (map[Group]struct{}, error) {
+	return g.groups[ent], nil
 }
 
 func (g *fatGrouper) IndividualsIn(group Group) (map[Individual]struct{}, error) {

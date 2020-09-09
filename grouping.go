@@ -13,7 +13,7 @@ type Grouper interface {
 	AllIndividuals() (map[Individual]struct{}, error)
 
 	IndividualsIn(Group) (map[Individual]struct{}, error)
-	GroupsOf(Individual) (map[Group]struct{}, error)
+	GroupsOf(Entity) (map[Group]struct{}, error)
 
 	ImmediateEntitiesIn(Group) (map[Entity]struct{}, error)
 	ImmediateGroupsOf(Entity) (map[Group]struct{}, error)
@@ -34,16 +34,6 @@ type Individual interface {
 	individual() string
 }
 
-type Subject interface {
-	Entity
-	subject() string
-}
-
-type Object interface {
-	Entity
-	object() string
-}
-
 // User is an Individual belongs to some Roles, and a Subject in Permissions
 type User string
 
@@ -52,10 +42,6 @@ func (u User) String() string {
 }
 
 func (u User) individual() string {
-	return u.String()
-}
-
-func (u User) subject() string {
 	return u.String()
 }
 
@@ -70,10 +56,6 @@ func (r Role) group() string {
 	return r.String()
 }
 
-func (r Role) subject() string {
-	return r.String()
-}
-
 // Article is an Individual belongs to some Categories, and an Object in Permissions
 type Article string
 
@@ -85,10 +67,6 @@ func (a Article) individual() string {
 	return a.String()
 }
 
-func (a Article) object() string {
-	return a.String()
-}
-
 // Category is a Group of Articles, and an Object in Permissions
 type Category string
 
@@ -97,9 +75,5 @@ func (c Category) String() string {
 }
 
 func (c Category) group() string {
-	return c.String()
-}
-
-func (c Category) object() string {
 	return c.String()
 }
