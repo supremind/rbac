@@ -2,92 +2,92 @@ package rbac
 
 import "sync"
 
-var _ Grouping = (*syncedGrouping)(nil)
+var _ Grouper = (*syncedGrouper)(nil)
 
-// syncedGrouping is safe in concurrent usages
-type syncedGrouping struct {
-	g Grouping
+// syncedGrouper is safe in concurrent usages
+type syncedGrouper struct {
+	g Grouper
 	sync.RWMutex
 }
 
-func newSyncedGrouping(g Grouping) *syncedGrouping {
-	return &syncedGrouping{
+func newSyncedGrouper(g Grouper) *syncedGrouper {
+	return &syncedGrouper{
 		g: g,
 	}
 }
 
-func (g *syncedGrouping) Join(sub Subject, role Role) error {
+func (g *syncedGrouper) Join(ent Entity, group Group) error {
 	g.Lock()
 	defer g.Unlock()
-	return g.g.Join(sub, role)
+	return g.g.Join(ent, group)
 }
 
-// Leave implements Grouping interface
-func (g *syncedGrouping) Leave(sub Subject, role Role) error {
+// Leave implements Grouper interface
+func (g *syncedGrouper) Leave(ent Entity, group Group) error {
 	g.Lock()
 	defer g.Unlock()
-	return g.g.Leave(sub, role)
+	return g.g.Leave(ent, group)
 }
 
-//  IsIn implements Grouping interface
-func (g *syncedGrouping) IsIn(user User, role Role) (bool, error) {
+//  IsIn implements Grouper interface
+func (g *syncedGrouper) IsIn(individual Individual, group Group) (bool, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.IsIn(user, role)
+	return g.g.IsIn(individual, group)
 }
 
-//  AllRoles implements Grouping interface
-func (g *syncedGrouping) AllRoles() (map[Role]struct{}, error) {
+//  AllGroups implements Grouper interface
+func (g *syncedGrouper) AllGroups() (map[Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.AllRoles()
+	return g.g.AllGroups()
 }
 
-// AllUsers implements Grouping interface
-func (g *syncedGrouping) AllUsers() (map[User]struct{}, error) {
+// AllIndividuals implements Grouper interface
+func (g *syncedGrouper) AllIndividuals() (map[Individual]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.AllUsers()
+	return g.g.AllIndividuals()
 }
 
-// RolesOf implements Grouping interface
-func (g *syncedGrouping) RolesOf(user User) (map[Role]struct{}, error) {
+// GroupsOf implements Grouper interface
+func (g *syncedGrouper) GroupsOf(individual Individual) (map[Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.RolesOf(user)
+	return g.g.GroupsOf(individual)
 }
 
-// UsersOf implements Grouping interface
-func (g *syncedGrouping) UsersOf(role Role) (map[User]struct{}, error) {
+// IndividualsIn implements Grouper interface
+func (g *syncedGrouper) IndividualsIn(group Group) (map[Individual]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.UsersOf(role)
+	return g.g.IndividualsIn(group)
 }
 
-//  DirectRolesOf implements Grouping interface
-func (g *syncedGrouping) DirectRolesOf(sub Subject) (map[Role]struct{}, error) {
+//  ImmediateGroupsOf implements Grouper interface
+func (g *syncedGrouper) ImmediateGroupsOf(ent Entity) (map[Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.DirectRolesOf(sub)
+	return g.g.ImmediateGroupsOf(ent)
 }
 
-// DirectSubjectsOf implements Grouping interface
-func (g *syncedGrouping) DirectSubjectsOf(role Role) (map[Subject]struct{}, error) {
+// ImmediateEntitiesIn implements Grouper interface
+func (g *syncedGrouper) ImmediateEntitiesIn(group Group) (map[Entity]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.DirectSubjectsOf(role)
+	return g.g.ImmediateEntitiesIn(group)
 }
 
-// RemoveRole implements Grouping interface
-func (g *syncedGrouping) RemoveRole(role Role) error {
+// RemoveGroup implements Grouper interface
+func (g *syncedGrouper) RemoveGroup(group Group) error {
 	g.Lock()
 	defer g.Unlock()
-	return g.g.RemoveRole(role)
+	return g.g.RemoveGroup(group)
 }
 
-// RemoveUser implements Grouping interface
-func (g *syncedGrouping) RemoveUser(user User) error {
+// RemoveIndividual implements Grouper interface
+func (g *syncedGrouper) RemoveIndividual(individual Individual) error {
 	g.Lock()
 	defer g.Unlock()
-	return g.g.RemoveUser(user)
+	return g.g.RemoveIndividual(individual)
 }

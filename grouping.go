@@ -1,53 +1,105 @@
 package rbac
 
-import (
-	"strings"
-)
+// Grouper defines individual-group relationships,
+// an individual could belong to any number of groups,
+// and a group could contain any individuals or other groups.
+type Grouper interface {
+	Join(Entity, Group) error
+	Leave(Entity, Group) error
 
-type Grouping interface {
-	Join(Subject, Role) error
-	Leave(Subject, Role) error
+	IsIn(Individual, Group) (bool, error)
 
-	IsIn(User, Role) (bool, error)
+	AllGroups() (map[Group]struct{}, error)
+	AllIndividuals() (map[Individual]struct{}, error)
 
-	AllRoles() (map[Role]struct{}, error)
-	AllUsers() (map[User]struct{}, error)
+	IndividualsIn(Group) (map[Individual]struct{}, error)
+	GroupsOf(Individual) (map[Group]struct{}, error)
 
-	RolesOf(User) (map[Role]struct{}, error)
-	UsersOf(Role) (map[User]struct{}, error)
+	ImmediateEntitiesIn(Group) (map[Entity]struct{}, error)
+	ImmediateGroupsOf(Entity) (map[Group]struct{}, error)
 
-	DirectRolesOf(Subject) (map[Role]struct{}, error)
-	DirectSubjectsOf(Role) (map[Subject]struct{}, error)
+	RemoveGroup(Group) error
+	RemoveIndividual(Individual) error
+}
 
-	RemoveRole(Role) error
-	RemoveUser(User) error
+type Entity interface{}
+
+type Group interface {
+	Entity
+	group() string
+}
+
+type Individual interface {
+	Entity
+	individual() string
 }
 
 type Subject interface {
+	Entity
 	subject() string
 }
 
+type Object interface {
+	Entity
+	object() string
+}
+
+// User is an Individual belongs to some Roles, and a Subject in Permissions
 type User string
 
-func (u User) subject() string {
+func (u User) String() string {
 	return "user:" + string(u)
 }
 
+func (u User) individual() string {
+	return u.String()
+}
+
+func (u User) subject() string {
+	return u.String()
+}
+
+// Role is a Group of Users, and a Subject in Permissions
 type Role string
 
-func (r Role) subject() string {
+func (r Role) String() string {
 	return "role:" + string(r)
 }
 
-func ParseSubject(sub string) (Subject, error) {
-	if strings.HasPrefix(sub, "user:") {
-		u := strings.TrimPrefix(sub, "user:")
-		return User(u), nil
-	}
-	if strings.HasPrefix(sub, "role:") {
-		r := strings.TrimPrefix(sub, "role:")
-		return Role(r), nil
-	}
+func (r Role) group() string {
+	return r.String()
+}
 
-	return nil, ErrInvlaidSubject
+func (r Role) subject() string {
+	return r.String()
+}
+
+// Article is an Individual belongs to some Categories, and an Object in Permissions
+type Article string
+
+func (a Article) String() string {
+	return "art:" + string(a)
+}
+
+func (a Article) individual() string {
+	return a.String()
+}
+
+func (a Article) object() string {
+	return a.String()
+}
+
+// Category is a Group of Articles, and an Object in Permissions
+type Category string
+
+func (c Category) String() string {
+	return "cat:" + string(c)
+}
+
+func (c Category) group() string {
+	return c.String()
+}
+
+func (c Category) object() string {
+	return c.String()
 }

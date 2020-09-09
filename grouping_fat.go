@@ -1,156 +1,134 @@
 package rbac
 
-var _ Grouping = (*fatGrouping)(nil)
+var _ Grouper = (*fatGrouper)(nil)
 
-// fatGrouping caches more information to speed up querying
-// fatGrouping is faster on quering, and slower on removing comprared to slimGrouping
-type fatGrouping struct {
-	slim slimGrouping // no sense to use another implementation
+// fatGrouper caches more information to speed up querying
+// fatGrouper is faster on quering, and slower on removing comprared to slimGrouper
+type fatGrouper struct {
+	slim slimGrouper // no sense to use another implementation
 
-	// subject => all roles it belongs to
-	roles map[Subject]map[Role]struct{}
-	// role => all users belongs to it
-	users map[Role]map[User]struct{}
+	// entity => all groups it belongs to
+	groups map[Entity]map[Group]struct{}
+	// group => all individuals belongs to it
+	individuals map[Group]map[Individual]struct{}
 
-	allUsers map[User]struct{}
-	allRoles map[Role]struct{}
+	allIndividuals map[Individual]struct{}
+	allGroups      map[Group]struct{}
 }
 
-func newFatGrouping() *fatGrouping {
-	return &fatGrouping{
-		slim:     *newSlimGrouping(),
-		roles:    make(map[Subject]map[Role]struct{}),
-		users:    make(map[Role]map[User]struct{}),
-		allUsers: make(map[User]struct{}),
-		allRoles: make(map[Role]struct{}),
+func newFatGrouper() *fatGrouper {
+	return &fatGrouper{
+		slim:           *newSlimGrouper(),
+		groups:         make(map[Entity]map[Group]struct{}),
+		individuals:    make(map[Group]map[Individual]struct{}),
+		allIndividuals: make(map[Individual]struct{}),
+		allGroups:      make(map[Group]struct{}),
 	}
 }
 
-func (g *fatGrouping) Join(sub Subject, role Role) error {
-	if e := g.slim.Join(sub, role); e != nil {
+func (g *fatGrouper) Join(ent Entity, group Group) error {
+	if e := g.slim.Join(ent, group); e != nil {
 		return e
 	}
 
-	g.allRoles[role] = struct{}{}
-	if user, ok := sub.(User); ok {
-		g.allUsers[user] = struct{}{}
+	g.allGroups[group] = struct{}{}
+	if individual, ok := ent.(Individual); ok {
+		g.allIndividuals[individual] = struct{}{}
 	}
 
-	if g.roles[sub] == nil {
-		g.roles[sub] = make(map[Role]struct{})
+	if g.groups[ent] == nil {
+		g.groups[ent] = make(map[Group]struct{})
 	}
-	g.roles[sub][role] = struct{}{}
-	for rr := range g.roles[role] {
-		g.roles[sub][rr] = struct{}{}
+	g.groups[ent][group] = struct{}{}
+	for rr := range g.groups[group] {
+		g.groups[ent][rr] = struct{}{}
 	}
 
-	if g.users[role] == nil {
-		g.users[role] = make(map[User]struct{})
+	if g.individuals[group] == nil {
+		g.individuals[group] = make(map[Individual]struct{})
 	}
-	if user, ok := sub.(User); ok {
-		g.users[role][user] = struct{}{}
+	if individual, ok := ent.(Individual); ok {
+		g.individuals[group][individual] = struct{}{}
 	} else {
-		for u := range g.users[sub.(Role)] {
-			g.users[role][u] = struct{}{}
+		for u := range g.individuals[ent.(Group)] {
+			g.individuals[group][u] = struct{}{}
 		}
 	}
 
 	return nil
 }
 
-func (g *fatGrouping) Leave(sub Subject, role Role) error {
-	if e := g.slim.Leave(sub, role); e != nil {
+func (g *fatGrouper) Leave(ent Entity, group Group) error {
+	if e := g.slim.Leave(ent, group); e != nil {
 		return e
 	}
 
-	if e := g.rebuildRoles(sub); e != nil {
+	if e := g.rebuildGroups(ent); e != nil {
 		return e
 	}
-	if e := g.rebuildUsers(role); e != nil {
+	if e := g.rebuildIndividuals(group); e != nil {
 		return e
 	}
 	return nil
 }
 
-func (g *fatGrouping) IsIn(user User, role Role) (bool, error) {
-	if users, ok := g.users[role]; ok {
-		_, ok := users[user]
+func (g *fatGrouper) IsIn(individual Individual, group Group) (bool, error) {
+	if individuals, ok := g.individuals[group]; ok {
+		_, ok := individuals[individual]
 		return ok, nil
 	}
 	return false, nil
 }
 
-func (g *fatGrouping) AllRoles() (map[Role]struct{}, error) {
-	return g.allRoles, nil
+func (g *fatGrouper) AllGroups() (map[Group]struct{}, error) {
+	return g.allGroups, nil
 }
 
-func (g *fatGrouping) AllUsers() (map[User]struct{}, error) {
-	return g.allUsers, nil
+func (g *fatGrouper) AllIndividuals() (map[Individual]struct{}, error) {
+	return g.allIndividuals, nil
 }
 
-func (g *fatGrouping) RolesOf(user User) (map[Role]struct{}, error) {
-	return g.roles[user], nil
+func (g *fatGrouper) GroupsOf(individual Individual) (map[Group]struct{}, error) {
+	return g.groups[individual], nil
 }
 
-func (g *fatGrouping) UsersOf(role Role) (map[User]struct{}, error) {
-	return g.users[role], nil
+func (g *fatGrouper) IndividualsIn(group Group) (map[Individual]struct{}, error) {
+	return g.individuals[group], nil
 }
 
-func (g *fatGrouping) DirectRolesOf(sub Subject) (map[Role]struct{}, error) {
-	return g.slim.DirectRolesOf(sub)
+func (g *fatGrouper) ImmediateGroupsOf(ent Entity) (map[Group]struct{}, error) {
+	return g.slim.ImmediateGroupsOf(ent)
 }
 
-func (g *fatGrouping) DirectSubjectsOf(role Role) (map[Subject]struct{}, error) {
-	return g.slim.DirectSubjectsOf(role)
+func (g *fatGrouper) ImmediateEntitiesIn(group Group) (map[Entity]struct{}, error) {
+	return g.slim.ImmediateEntitiesIn(group)
 }
 
-func (g *fatGrouping) RemoveRole(role Role) error {
-	delete(g.allRoles, role)
-	delete(g.users, role)
-	delete(g.roles, role)
+func (g *fatGrouper) RemoveGroup(group Group) error {
+	delete(g.allGroups, group)
+	delete(g.individuals, group)
+	delete(g.groups, group)
 
-	subs, e := g.DirectSubjectsOf(role)
+	subs, e := g.ImmediateEntitiesIn(group)
 	if e != nil {
 		return e
 	}
-	roles, e := g.DirectRolesOf(role)
+	groups, e := g.ImmediateGroupsOf(group)
 	if e != nil {
 		return e
 	}
 
-	if e := g.slim.RemoveRole(role); e != nil {
+	if e := g.slim.RemoveGroup(group); e != nil {
 		return e
 	}
 
-	for sub := range subs {
-		if e := g.rebuildRoles(sub); e != nil {
+	for ent := range subs {
+		if e := g.rebuildGroups(ent); e != nil {
 			return e
 		}
 	}
-	for role := range roles {
-		if e := g.rebuildUsers(role); e != nil {
-			return e
-		}
-	}
-
-	return nil
-}
-
-func (g *fatGrouping) RemoveUser(user User) error {
-	delete(g.allUsers, user)
-	delete(g.roles, user)
-
-	roles, e := g.DirectRolesOf(user)
-	if e != nil {
-		return e
-	}
-
-	if e := g.slim.RemoveUser(user); e != nil {
-		return e
-	}
-
-	for role := range roles {
-		if e := g.rebuildUsers(role); e != nil {
+	for group := range groups {
+		if e := g.rebuildIndividuals(group); e != nil {
 			return e
 		}
 	}
@@ -158,29 +136,51 @@ func (g *fatGrouping) RemoveUser(user User) error {
 	return nil
 }
 
-func (g *fatGrouping) rebuildRoles(sub Subject) error {
-	// rebuild roles for subject
-	roles, e := g.DirectRolesOf(sub)
+func (g *fatGrouper) RemoveIndividual(individual Individual) error {
+	delete(g.allIndividuals, individual)
+	delete(g.groups, individual)
+
+	groups, e := g.ImmediateGroupsOf(individual)
 	if e != nil {
 		return e
 	}
-	g.roles[sub] = make(map[Role]struct{}, len(roles))
-	for role := range roles {
-		g.roles[sub][role] = struct{}{}
-		for rr := range g.roles[role] {
-			g.roles[sub][rr] = struct{}{}
+
+	if e := g.slim.RemoveIndividual(individual); e != nil {
+		return e
+	}
+
+	for group := range groups {
+		if e := g.rebuildIndividuals(group); e != nil {
+			return e
 		}
 	}
 
-	if role, ok := sub.(Role); ok {
-		// rebuild roles for all subjects of sub
-		// fixme: some subject may be rebuilt more than once
-		subs, e := g.DirectSubjectsOf(role)
+	return nil
+}
+
+func (g *fatGrouper) rebuildGroups(ent Entity) error {
+	// rebuild groups for entity
+	groups, e := g.ImmediateGroupsOf(ent)
+	if e != nil {
+		return e
+	}
+	g.groups[ent] = make(map[Group]struct{}, len(groups))
+	for group := range groups {
+		g.groups[ent][group] = struct{}{}
+		for rr := range g.groups[group] {
+			g.groups[ent][rr] = struct{}{}
+		}
+	}
+
+	if group, ok := ent.(Group); ok {
+		// rebuild groups for all subjects of ent
+		// fixme: some entity may be rebuilt more than once
+		subs, e := g.ImmediateEntitiesIn(group)
 		if e != nil {
 			return e
 		}
-		for sub := range subs {
-			if e := g.rebuildRoles(sub); e != nil {
+		for ent := range subs {
+			if e := g.rebuildGroups(ent); e != nil {
 				return e
 			}
 		}
@@ -189,32 +189,32 @@ func (g *fatGrouping) rebuildRoles(sub Subject) error {
 	return nil
 }
 
-func (g *fatGrouping) rebuildUsers(role Role) error {
-	// rebuild users of role
-	subs, e := g.DirectSubjectsOf(role)
+func (g *fatGrouper) rebuildIndividuals(group Group) error {
+	// rebuild individuals of group
+	subs, e := g.ImmediateEntitiesIn(group)
 	if e != nil {
 		return e
 	}
 
-	g.users[role] = make(map[User]struct{}, len(subs))
-	for sub := range subs {
-		if user, ok := sub.(User); ok {
-			g.users[role][user] = struct{}{}
+	g.individuals[group] = make(map[Individual]struct{}, len(subs))
+	for ent := range subs {
+		if individual, ok := ent.(Individual); ok {
+			g.individuals[group][individual] = struct{}{}
 		} else {
-			for user := range g.users[sub.(Role)] {
-				g.users[role][user] = struct{}{}
+			for individual := range g.individuals[ent.(Group)] {
+				g.individuals[group][individual] = struct{}{}
 			}
 		}
 	}
 
-	// rebuild users for all roles of role
-	// fixme: some role may be rebuilt more than once
-	roles, e := g.DirectRolesOf(role)
+	// rebuild individuals for all groups of group
+	// fixme: some group may be rebuilt more than once
+	groups, e := g.ImmediateGroupsOf(group)
 	if e != nil {
 		return e
 	}
-	for role := range roles {
-		if e := g.rebuildUsers(role); e != nil {
+	for group := range groups {
+		if e := g.rebuildIndividuals(group); e != nil {
 			return e
 		}
 	}

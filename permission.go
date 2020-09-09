@@ -11,10 +11,10 @@ type Permission struct {
 }
 
 type Permitter interface {
-	Permit(Subject, Object, Action) error
-	Revoke(Subject, Object, Action) error
-	Shall(Subject, Object, Action) error
+	Permit(Permission) error
+	Revoke(Permission) error
+	Shall(Permission) (bool, error)
 
-	Permissions(Subject) ([]Permission, error)
-	PermittedSubjects(Object) ([]Permission, error)
+	PermissionsTo(Object) ([]Permission, error)
+	PermissionsFor(Subject) ([]Permission, error)
 }

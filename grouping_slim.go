@@ -2,163 +2,165 @@ package rbac
 
 import "fmt"
 
-var _ Grouping = (*slimGrouping)(nil)
+var _ Grouper = (*slimGrouper)(nil)
 
-// slimGrouping is a simplest implementation of Grouping interface
+// slimGrouper is a simplest implementation of Grouper interface
 // it is used as a prototype of concept and baseline for testing
-type slimGrouping struct {
-	parents  map[Subject]map[Role]struct{}
-	children map[Role]map[Subject]struct{}
+type slimGrouper struct {
+	parents  map[Entity]map[Group]struct{}
+	children map[Group]map[Entity]struct{}
 	maxDepth int
 }
 
-func newSlimGrouping() *slimGrouping {
-	return &slimGrouping{
-		parents:  make(map[Subject]map[Role]struct{}),
-		children: make(map[Role]map[Subject]struct{}),
+func newSlimGrouper() *slimGrouper {
+	return &slimGrouper{
+		parents:  make(map[Entity]map[Group]struct{}),
+		children: make(map[Group]map[Entity]struct{}),
 		maxDepth: 10,
 	}
 }
 
-// Join implements Grouping interface
-func (g *slimGrouping) Join(sub Subject, role Role) error {
-	if g.parents[sub] == nil {
-		g.parents[sub] = make(map[Role]struct{}, 1)
+// Join implements Grouper interface
+func (g *slimGrouper) Join(entity Entity, grp Group) error {
+	if g.parents[entity] == nil {
+		g.parents[entity] = make(map[Group]struct{}, 1)
 	}
-	g.parents[sub][role] = struct{}{}
+	g.parents[entity][grp] = struct{}{}
 
-	if g.children[role] == nil {
-		g.children[role] = make(map[Subject]struct{})
+	if g.children[grp] == nil {
+		g.children[grp] = make(map[Entity]struct{})
 	}
-	g.children[role][sub] = struct{}{}
+	g.children[grp][entity] = struct{}{}
 
 	return nil
 }
 
 // Leave implements Grouping interfaceJ
-func (g *slimGrouping) Leave(sub Subject, role Role) error {
-	if g.parents[sub] == nil {
-		return fmt.Errorf("%w: grouping rule: %s -> %s", ErrNotFound, sub.subject(), role.subject())
-	} else if _, ok := g.parents[sub][role]; !ok {
-		return fmt.Errorf("%w: grouping rule: %s -> %s", ErrNotFound, sub.subject(), role.subject())
+func (g *slimGrouper) Leave(entity Entity, grp Group) error {
+	if g.parents[entity] == nil {
+		return fmt.Errorf("%w: grouping policy: %s -> %s", ErrNotFound, entity, grp)
+	} else if _, ok := g.parents[entity][grp]; !ok {
+		return fmt.Errorf("%w: grouping policy: %s -> %s", ErrNotFound, entity, grp)
 	}
-	delete(g.parents[sub], role)
+	delete(g.parents[entity], grp)
 
-	if g.children[role] == nil {
-		return fmt.Errorf("%w: grouping rule: %s -> %s", ErrNotFound, role.subject(), sub.subject())
-	} else if _, ok := g.children[role][sub]; !ok {
-		return fmt.Errorf("%w: grouping rule: %s -> %s", ErrNotFound, role.subject(), sub.subject())
+	if g.children[grp] == nil {
+		return fmt.Errorf("%w: grouping policy: %s -> %s", ErrNotFound, grp, entity)
+	} else if _, ok := g.children[grp][entity]; !ok {
+		return fmt.Errorf("%w: grouping policy: %s -> %s", ErrNotFound, grp, entity)
 	}
-	delete(g.children[role], sub)
+	delete(g.children[grp], entity)
 
 	return nil
 }
 
-// IsIn implements Grouping interface
-func (g *slimGrouping) IsIn(user User, role Role) (bool, error) {
-	roles, err := g.RolesOf(user)
+// IsIn implements Grouper interface
+func (g *slimGrouper) IsIn(ind Individual, grp Group) (bool, error) {
+	groups, err := g.GroupsOf(ind)
 	if err != nil {
 		return false, err
 	}
 
-	_, ok := roles[role]
+	_, ok := groups[grp]
 	return ok, nil
 }
 
-// AllRoles implements Grouping interface
-func (g *slimGrouping) AllRoles() (map[Role]struct{}, error) {
-	roles := make(map[Role]struct{}, len(g.children))
-	for role := range g.children {
-		roles[role] = struct{}{}
+// AllGroups implements Grouper interface
+func (g *slimGrouper) AllGroups() (map[Group]struct{}, error) {
+	groups := make(map[Group]struct{}, len(g.children))
+	for grp := range g.children {
+		groups[grp] = struct{}{}
 	}
-	return roles, nil
+	return groups, nil
 }
 
-// AllUsers implements Grouping interface
-func (g *slimGrouping) AllUsers() (map[User]struct{}, error) {
-	users := make(map[User]struct{}, len(g.parents))
-	for sub := range g.parents {
-		if user, ok := sub.(User); ok {
-			users[user] = struct{}{}
+// AllIndividuals implements Grouper interface
+func (g *slimGrouper) AllIndividuals() (map[Individual]struct{}, error) {
+	invs := make(map[Individual]struct{}, len(g.parents))
+	for entity := range g.parents {
+		if ind, ok := entity.(Individual); ok {
+			invs[ind] = struct{}{}
 		}
 	}
-	return users, nil
+	return invs, nil
 }
 
-// RolesOf implements Grouping interface
-func (g *slimGrouping) RolesOf(user User) (map[Role]struct{}, error) {
-	ancients := make(map[Role]struct{})
+// GroupsOf implements Grouper interface
+func (g *slimGrouper) GroupsOf(ind Individual) (map[Group]struct{}, error) {
+	ancients := make(map[Group]struct{})
 
-	var query func(sub Subject, depth int)
-	query = func(sub Subject, depth int) {
+	var query func(entity Entity, depth int)
+	query = func(entity Entity, depth int) {
 		if depth > g.maxDepth {
 			return
 		}
-		for r := range g.parents[sub] {
+		for r := range g.parents[entity] {
 			ancients[r] = struct{}{}
 			query(r, depth+1)
 		}
 	}
-	query(user, 0)
+	query(ind, 0)
 
 	return ancients, nil
 }
 
-// UsersOf implements Grouping interface
-func (g *slimGrouping) UsersOf(role Role) (map[User]struct{}, error) {
-	children := make(map[User]struct{})
+// IndividualsIn implements Grouper interface
+func (g *slimGrouper) IndividualsIn(grp Group) (map[Individual]struct{}, error) {
+	children := make(map[Individual]struct{})
 
-	var query func(role Role, depth int)
-	query = func(role Role, depth int) {
+	var query func(grp Group, depth int)
+	query = func(grp Group, depth int) {
 		if depth > g.maxDepth {
 			return
 		}
-		for ch := range g.children[role] {
-			if user, ok := ch.(User); ok {
-				children[user] = struct{}{}
+		for ch := range g.children[grp] {
+			if ind, ok := ch.(Individual); ok {
+				children[ind] = struct{}{}
 			} else {
-				query(ch.(Role), depth+1)
+				query(ch.(Group), depth+1)
 			}
 		}
 	}
-	query(role, 0)
+	query(grp, 0)
 
 	return children, nil
 }
 
-func (g *slimGrouping) DirectRolesOf(sub Subject) (map[Role]struct{}, error) {
-	return g.parents[sub], nil
+// ImmediateGroupsOf implements Grouper interface
+func (g *slimGrouper) ImmediateGroupsOf(entity Entity) (map[Group]struct{}, error) {
+	return g.parents[entity], nil
 }
 
-func (g *slimGrouping) DirectSubjectsOf(role Role) (map[Subject]struct{}, error) {
-	return g.children[role], nil
+// ImmediateEntitiesIn implements Grouper interface
+func (g *slimGrouper) ImmediateEntitiesIn(grp Group) (map[Entity]struct{}, error) {
+	return g.children[grp], nil
 }
 
-// RemoveRole implements Grouping interface
-func (g *slimGrouping) RemoveRole(role Role) error {
-	children := g.children[role]
-	parents := g.parents[role]
+// RemoveGroup implements Grouper interface
+func (g *slimGrouper) RemoveGroup(grp Group) error {
+	children := g.children[grp]
+	parents := g.parents[grp]
 
-	delete(g.children, role)
-	delete(g.parents, role)
+	delete(g.children, grp)
+	delete(g.parents, grp)
 
 	for ch := range children {
-		delete(g.parents[ch], role)
+		delete(g.parents[ch], grp)
 	}
 	for p := range parents {
-		delete(g.children[p], role)
+		delete(g.children[p], grp)
 	}
 
 	return nil
 }
 
-// RemoveUser implements Grouping interface
-func (g *slimGrouping) RemoveUser(user User) error {
-	parents := g.parents[user]
-	delete(g.parents, user)
+// RemoveIndividual implements Grouper interface
+func (g *slimGrouper) RemoveIndividual(ind Individual) error {
+	parents := g.parents[ind]
+	delete(g.parents, ind)
 
 	for p := range parents {
-		delete(g.children[p], user)
+		delete(g.children[p], ind)
 	}
 	return nil
 }
