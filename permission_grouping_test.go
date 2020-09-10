@@ -42,13 +42,13 @@ var _ = Describe("subject grouped", func() {
 		{
 			name: "subject grouped",
 			ctor: func(g Grouping) Permission {
-				return newSubjectGroupedPermission(g)
+				return newSubjectGroupedPermission(g, newThinPermission())
 			},
 		},
 		{
 			name: "both grouped",
 			ctor: func(g Grouping) Permission {
-				return newBothGroupedPermission(g, newFatGrouping())
+				return newBothGroupedPermission(g, newFatGrouping(), newThinPermission())
 			},
 		},
 	} {
@@ -140,7 +140,13 @@ var _ = Describe("object grouped", func() {
 		{
 			name: "object grouped",
 			ctor: func(og Grouping) Permission {
-				return newObjectGroupedPermission(og)
+				return newObjectGroupedPermission(og, newThinPermission())
+			},
+		},
+		{
+			name: "both grouped",
+			ctor: func(og Grouping) Permission {
+				return newBothGroupedPermission(newFatGrouping(), og, newThinPermission())
 			},
 		},
 	} {

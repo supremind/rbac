@@ -38,15 +38,15 @@ var _ = Describe("base permitter implementation", func() {
 		},
 		{
 			name: "subject grouped",
-			p:    newSubjectGroupedPermission(newFatGrouping()),
+			p:    newSubjectGroupedPermission(newFatGrouping(), newThinPermission()),
 		},
 		{
 			name: "object grouped",
-			p:    newObjectGroupedPermission(newFatGrouping()),
+			p:    newObjectGroupedPermission(newFatGrouping(), newThinPermission()),
 		},
 		{
 			name: "both grouped",
-			p:    newBothGroupedPermission(newFatGrouping(), newFatGrouping()),
+			p:    newBothGroupedPermission(newFatGrouping(), newFatGrouping(), newThinPermission()),
 		},
 	}
 

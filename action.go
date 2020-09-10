@@ -14,6 +14,8 @@ const (
 	ReadWrite     = Read | Write
 	ReadExec      = Read | Exec
 	ReadWriteExec = Read | Write | Exec
+
+	allActions = ReadWriteExec
 )
 
 func (a Action) IsIn(b Action) bool {
@@ -22,6 +24,10 @@ func (a Action) IsIn(b Action) bool {
 
 func (a Action) Includes(b Action) bool {
 	return b.IsIn(a)
+}
+
+func (a Action) Difference(b Action) Action {
+	return a &^ b
 }
 
 func (a Action) Split() []Action {

@@ -8,10 +8,10 @@ type subjectGroupedPermission struct {
 	Permission
 }
 
-func newSubjectGroupedPermission(sg Grouping) *subjectGroupedPermission {
+func newSubjectGroupedPermission(sg Grouping, p Permission) *subjectGroupedPermission {
 	return &subjectGroupedPermission{
 		sg:         sg,
-		Permission: newThinPermission(),
+		Permission: p,
 	}
 }
 
@@ -45,11 +45,41 @@ func (p *subjectGroupedPermission) Shall(sub Subject, obj Object, act Action) (b
 	return false, nil
 }
 
+func (p *subjectGroupedPermission) PermissionsFor(sub Subject) (map[Object]Action, error) {
+	perms, e := p.Permission.PermissionsFor(sub)
+	if e != nil {
+		return nil, e
+	}
+	if perms == nil {
+		perms = make(map[Object]Action)
+	}
+
+	roles, e := p.sg.GroupsOf(sub)
+	if e != nil {
+		return nil, e
+	}
+	for role := range roles {
+		rp, e := p.Permission.PermissionsFor(role)
+		if e != nil {
+			return nil, e
+		}
+		for obj, act := range rp {
+			perms[obj] |= act
+		}
+	}
+
+	return perms, nil
+}
+
 func (p *subjectGroupedPermission) PermittedActions(sub Subject, obj Object) (Action, error) {
 	allowed, e := p.Permission.PermittedActions(sub, obj)
 	if e != nil {
 		return 0, e
 	}
+	if allowed == allActions {
+		return allowed, nil
+	}
+
 	groups, e := p.sg.GroupsOf(sub)
 	if e != nil {
 		return 0, e
@@ -60,6 +90,9 @@ func (p *subjectGroupedPermission) PermittedActions(sub Subject, obj Object) (Ac
 	}
 	for group := range groups {
 		allowed |= perms[group]
+		if allowed == allActions {
+			return allowed, nil
+		}
 	}
 
 	return allowed, nil
@@ -70,10 +103,10 @@ type objectGroupedPermission struct {
 	Permission
 }
 
-func newObjectGroupedPermission(og Grouping) *objectGroupedPermission {
+func newObjectGroupedPermission(og Grouping, p Permission) *objectGroupedPermission {
 	return &objectGroupedPermission{
 		og:         og,
-		Permission: newThinPermission(),
+		Permission: p,
 	}
 }
 
@@ -96,13 +129,41 @@ func (p *objectGroupedPermission) Shall(sub Subject, obj Object, act Action) (bo
 	}
 
 	for group := range groups {
-		allowed |= perms[group]
-		if allowed.Includes(act) {
-			return true, nil
+		if perm, ok := perms[group]; ok {
+			allowed |= perm
+			if allowed.Includes(act) {
+				return true, nil
+			}
 		}
 	}
 
 	return false, nil
+}
+
+func (p *objectGroupedPermission) PermissionsTo(obj Object) (map[Subject]Action, error) {
+	perms, e := p.Permission.PermissionsTo(obj)
+	if e != nil {
+		return nil, e
+	}
+	if perms == nil {
+		perms = make(map[Subject]Action)
+	}
+
+	cats, e := p.og.GroupsOf(obj)
+	if e != nil {
+		return nil, e
+	}
+	for cat := range cats {
+		cp, e := p.Permission.PermissionsTo(cat)
+		if e != nil {
+			return nil, e
+		}
+		for sub, act := range cp {
+			perms[sub] |= act
+		}
+	}
+
+	return perms, nil
 }
 
 func (p *objectGroupedPermission) PermittedActions(sub Subject, obj Object) (Action, error) {
@@ -110,7 +171,11 @@ func (p *objectGroupedPermission) PermittedActions(sub Subject, obj Object) (Act
 	if e != nil {
 		return 0, e
 	}
-	groups, e := p.og.GroupsOf(sub)
+	if allowed == allActions {
+		return allowed, nil
+	}
+
+	groups, e := p.og.GroupsOf(obj)
 	if e != nil {
 		return 0, e
 	}
@@ -118,8 +183,14 @@ func (p *objectGroupedPermission) PermittedActions(sub Subject, obj Object) (Act
 	if e != nil {
 		return 0, e
 	}
+
 	for group := range groups {
-		allowed |= perms[group]
+		if perm, ok := perms[group]; ok {
+			allowed |= perm
+			if allowed == allActions {
+				return allowed, nil
+			}
+		}
 	}
 
 	return allowed, nil
@@ -128,14 +199,18 @@ func (p *objectGroupedPermission) PermittedActions(sub Subject, obj Object) (Act
 type bothGroupedPermission struct {
 	sg Grouping
 	og Grouping
+	sp Permission
+	op Permission
 	Permission
 }
 
-func newBothGroupedPermission(sg, og Grouping) *bothGroupedPermission {
+func newBothGroupedPermission(sg, og Grouping, p Permission) *bothGroupedPermission {
 	return &bothGroupedPermission{
 		sg:         sg,
 		og:         og,
-		Permission: newThinPermission(),
+		sp:         newSubjectGroupedPermission(sg, p),
+		op:         newObjectGroupedPermission(og, p),
+		Permission: p,
 	}
 }
 
@@ -148,23 +223,48 @@ func (p *bothGroupedPermission) Shall(sub Subject, obj Object, act Action) (bool
 		return true, nil
 	}
 
-	groups, e := p.sg.GroupsOf(sub)
-	if e != nil {
+	if allow, e := p.sp.Shall(sub, obj, act.Difference(allowed)); e != nil {
 		return false, e
-	}
-	perms, e := p.Permission.PermissionsTo(obj)
-	if e != nil {
-		return false, e
+	} else if allow {
+		return true, e
 	}
 
-	for group := range groups {
-		allowed |= perms[group]
-		if allowed.Includes(act) {
-			return true, nil
+	if allow, e := p.op.Shall(sub, obj, act.Difference(allowed)); e != nil {
+		return false, e
+	} else if allow {
+		return true, e
+	}
+
+	roles, e := p.sg.GroupsOf(sub)
+	if e != nil {
+		return false, nil
+	}
+	cats, e := p.og.GroupsOf(obj)
+	if e != nil {
+		return false, nil
+	}
+	for role := range roles {
+		for cat := range cats {
+			perm, e := p.Permission.PermittedActions(role, cat)
+			if e != nil {
+				return false, nil
+			}
+			allowed |= perm
+			if allowed.Includes(act) {
+				return true, nil
+			}
 		}
 	}
 
 	return false, nil
+}
+
+func (p *bothGroupedPermission) PermissionsTo(obj Object) (map[Subject]Action, error) {
+	return p.op.PermissionsTo(obj)
+}
+
+func (p *bothGroupedPermission) PermissionsFor(sub Subject) (map[Object]Action, error) {
+	return p.sp.PermissionsFor(sub)
 }
 
 func (p *bothGroupedPermission) PermittedActions(sub Subject, obj Object) (Action, error) {
@@ -172,36 +272,47 @@ func (p *bothGroupedPermission) PermittedActions(sub Subject, obj Object) (Actio
 	if e != nil {
 		return 0, e
 	}
+	if allowed == allActions {
+		return allowed, nil
+	}
+
+	if perm, e := p.sp.PermittedActions(sub, obj); e != nil {
+		return 0, e
+	} else {
+		allowed |= perm
+		if allowed == allActions {
+			return allowed, nil
+		}
+	}
+
+	if perm, e := p.op.PermittedActions(sub, obj); e != nil {
+		return 0, e
+	} else {
+		allowed |= perm
+		if allowed == allActions {
+			return allowed, nil
+		}
+	}
 
 	roles, e := p.sg.GroupsOf(sub)
 	if e != nil {
 		return 0, e
-	}
-	subjects := make(map[Subject]struct{}, len(roles)+1)
-	subjects[sub] = struct{}{}
-	for role := range roles {
-		subjects[role] = struct{}{}
 	}
 
 	cats, e := p.og.GroupsOf(obj)
 	if e != nil {
 		return 0, e
 	}
-	objects := make(map[Object]struct{}, len(cats)+1)
-	objects[obj] = struct{}{}
-	for cat := range cats {
-		objects[cat] = struct{}{}
-	}
 
-	for sub := range subjects {
-		for obj := range objects {
-			act, e := p.Permission.PermittedActions(sub, obj)
+	for role := range roles {
+		for cat := range cats {
+			act, e := p.Permission.PermittedActions(role, cat)
 			if e != nil {
 				return 0, e
 			}
 
 			allowed |= act
-			if allowed == ReadWriteExec {
+			if allowed == allActions {
 				return allowed, nil
 			}
 		}
