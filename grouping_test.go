@@ -30,31 +30,51 @@ func loadUsersAndRoles() {
 	}
 }
 
-var groupers = []struct {
-	name string
-	g    Grouping
+var objectGroupings = []struct {
+	art Article
+	cat Category
 }{
-	{
-		name: "slim",
-		g:    newSlimGrouping(),
-	},
-	{
-		name: "fat",
-		g:    newFatGrouping(),
-	},
-	{
-		name: "synced fat",
-		g:    newSyncedGrouping(newFatGrouping()),
-	},
-	{
-		name: "synced slim",
-		g:    newSyncedGrouping(newSlimGrouping()),
-	},
+	{art: Article("project apollo"), cat: Category("peace")},
+	{art: Article("manhattan project"), cat: Category("war")},
+	{art: Article("operation market garden"), cat: Category("war")},
+	{art: Article("operation overlord"), cat: Category("war")},
+
+	{art: Article("project apollo"), cat: Category("america")},
+	{art: Article("manhattan project"), cat: Category("america")},
+	{art: Article("operation market garden"), cat: Category("europe")},
+	{art: Article("operation overlord"), cat: Category("europe")},
+
+	{art: Article("project apollo"), cat: Category("success")},
+	{art: Article("manhattan project"), cat: Category("success")},
+	{art: Article("operation market garden"), cat: Category("success")},
+	{art: Article("operation overlord"), cat: Category("fail")},
 }
 
 var _ = Describe("grouper implementation", func() {
 	Expect(userRoles).NotTo(BeEmpty())
 	Expect(roleUsers).NotTo(BeEmpty())
+
+	var groupers = []struct {
+		name string
+		g    Grouping
+	}{
+		{
+			name: "slim",
+			g:    newSlimGrouping(),
+		},
+		{
+			name: "fat",
+			g:    newFatGrouping(),
+		},
+		{
+			name: "synced fat",
+			g:    newSyncedGrouping(newFatGrouping()),
+		},
+		{
+			name: "synced slim",
+			g:    newSyncedGrouping(newSlimGrouping()),
+		},
+	}
 
 	for _, tg := range groupers {
 		Context(tg.name, func() {

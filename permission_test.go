@@ -8,6 +8,21 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var userToArticlePermissions = []struct {
+	sub User
+	obj Article
+	act Action
+}{
+	{sub: User("alan"), obj: Article("operation market garden"), act: ReadWriteExec},
+	{sub: User("karman"), obj: Article("operation market garden"), act: ReadWrite},
+	{sub: User("alan"), obj: Article("operation overlord"), act: ReadWriteExec},
+	{sub: User("neumann"), obj: Article("operation overlord"), act: Read},
+	{sub: User("neumann"), obj: Article("manhattan project"), act: ReadWrite},
+	{sub: User("karman"), obj: Article("manhattan project"), act: ReadWriteExec},
+	{sub: User("alan"), obj: Article("project apollo"), act: Read},
+	{sub: User("karman"), obj: Article("project apollo"), act: ReadWriteExec},
+}
+
 var _ = Describe("base permitter implementation", func() {
 	var permitters = []struct {
 		name string
@@ -35,33 +50,18 @@ var _ = Describe("base permitter implementation", func() {
 		},
 	}
 
-	var initPermissions = []struct {
-		sub Subject
-		obj Object
-		act Action
-	}{
-		{sub: User("alan"), obj: Article("market garden"), act: ReadWriteExec},
-		{sub: User("karman"), obj: Article("market garden"), act: ReadWrite},
-		{sub: User("alan"), obj: Article("overlord"), act: ReadWriteExec},
-		{sub: User("neumann"), obj: Article("overlord"), act: Read},
-		{sub: User("neumann"), obj: Article("manhattan"), act: ReadWrite},
-		{sub: User("karman"), obj: Article("manhattan"), act: ReadWriteExec},
-		{sub: User("alan"), obj: Article("apollo"), act: Read},
-		{sub: User("karman"), obj: Article("apollo"), act: ReadWriteExec},
-	}
-
 	for _, tp := range permitters {
 		Context(tp.name, func() {
 			p := tp.p
 
 			BeforeEach(func() {
-				for _, tc := range initPermissions {
+				for _, tc := range userToArticlePermissions {
 					Expect(p.Permit(tc.sub, tc.obj, tc.act)).To(Succeed())
 				}
 			})
 
 			Context("check init polices", func() {
-				for _, tc := range initPermissions {
+				for _, tc := range userToArticlePermissions {
 					It("should be allowed", func() {
 						Expect(p.Shall(tc.sub, tc.obj, tc.act)).To(BeTrue(), fmt.Sprintf("%s -[%s]-> %s", tc.sub, tc.act, tc.obj))
 					})
@@ -73,20 +73,20 @@ var _ = Describe("base permitter implementation", func() {
 					Expect(p.Revoke(sub, obj, act)).To(Succeed())
 					Expect(p.Shall(sub, obj, act)).NotTo(BeTrue())
 				},
-				Entry("alan x overlord", User("alan"), Article("overlord"), Exec),
-				Entry("alan r overlord", User("alan"), Article("overlord"), Read),
-				Entry("karman rwx apollo", User("karman"), Article("apollo"), ReadWriteExec),
+				Entry("alan x operation overlord", User("alan"), Article("operation overlord"), Exec),
+				Entry("alan r operation overlord", User("alan"), Article("operation overlord"), Read),
+				Entry("karman rwx project apollo", User("karman"), Article("project apollo"), ReadWriteExec),
 			)
 
 			DescribeTable("query permissions to object",
 				func(obj Object, perm map[Subject]Action) {
 					Expect(p.PermissionsTo(obj)).To(Equal(perm))
 				},
-				Entry("permissions to market garden", Article("market garden"), map[Subject]Action{
+				Entry("permissions to operation market garden", Article("operation market garden"), map[Subject]Action{
 					User("alan"):   ReadWriteExec,
 					User("karman"): ReadWrite,
 				}),
-				Entry("permissions to manhattan", Article("manhattan"), map[Subject]Action{
+				Entry("permissions to manhattan project", Article("manhattan project"), map[Subject]Action{
 					User("neumann"): ReadWrite,
 					User("karman"):  ReadWriteExec,
 				}),
@@ -97,13 +97,13 @@ var _ = Describe("base permitter implementation", func() {
 					Expect(p.PermissionsFor(sub)).To(Equal(perm))
 				},
 				Entry("permissions for alan", User("alan"), map[Object]Action{
-					Article("market garden"): ReadWriteExec,
-					Article("overlord"):      ReadWriteExec,
-					Article("apollo"):        Read,
+					Article("operation market garden"): ReadWriteExec,
+					Article("operation overlord"):      ReadWriteExec,
+					Article("project apollo"):          Read,
 				}),
 				Entry("permissions for neumann", User("neumann"), map[Object]Action{
-					Article("overlord"):  Read,
-					Article("manhattan"): ReadWrite,
+					Article("operation overlord"): Read,
+					Article("manhattan project"):  ReadWrite,
 				}),
 			)
 
@@ -111,9 +111,9 @@ var _ = Describe("base permitter implementation", func() {
 				func(sub Subject, obj Object, act Action) {
 					Expect(p.PermittedActions(sub, obj)).To(Equal(act))
 				},
-				Entry("alan to manhattan", User("alan"), Article("manhattan"), None),
-				Entry("alan to overlord", User("alan"), Article("overlord"), ReadWriteExec),
-				Entry("karman to manhattan", User("karman"), Article("manhattan"), ReadWriteExec),
+				Entry("alan to manhattan project", User("alan"), Article("manhattan project"), None),
+				Entry("alan to operation overlord", User("alan"), Article("operation overlord"), ReadWriteExec),
+				Entry("karman to manhattan project", User("karman"), Article("manhattan project"), ReadWriteExec),
 			)
 		})
 	}
