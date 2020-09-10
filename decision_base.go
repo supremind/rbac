@@ -10,6 +10,15 @@ type decisionMaker struct {
 	uap map[User]map[Article]Action // cache user -> article -> action permissions
 }
 
+func newDecisionMaker(sg Grouping, og Grouping, p Permission) *decisionMaker {
+	return &decisionMaker{
+		sg:  sg,
+		og:  og,
+		p:   p,
+		uap: make(map[User]map[Article]Action),
+	}
+}
+
 // SubjectJoin joins a user or a sub role to a role
 func (dm *decisionMaker) SubjectJoin(sub Subject, role Role) error {
 	if e := dm.sg.Join(sub, role); e != nil {
@@ -204,6 +213,10 @@ func (dm *decisionMaker) Permit(sub Subject, obj Object, act Action) error {
 		users[sub.(User)] = struct{}{}
 
 	case Role:
+		if dm.sg == nil {
+			return ErrNoSubjectGrouping
+		}
+
 		us, e := dm.sg.IndividualsIn(sub.(Role))
 		if e != nil {
 			return e
@@ -219,6 +232,10 @@ func (dm *decisionMaker) Permit(sub Subject, obj Object, act Action) error {
 		arts[obj.(Article)] = struct{}{}
 
 	case Category:
+		if dm.og == nil {
+			return ErrNoObjectGrouping
+		}
+
 		as, e := dm.og.IndividualsIn(obj.(Category))
 		if e != nil {
 			return e
@@ -260,6 +277,10 @@ func (dm *decisionMaker) Revoke(sub Subject, obj Object, act Action) error {
 			delete(dm.uap[user], obj.(Article))
 
 		case Category:
+			if dm.og == nil {
+				return ErrNoObjectGrouping
+			}
+
 			arts, e := dm.og.IndividualsIn(obj.(Category))
 			if e != nil {
 				return e
@@ -280,6 +301,10 @@ func (dm *decisionMaker) Revoke(sub Subject, obj Object, act Action) error {
 		return removeByUser(sub.(User))
 
 	case Role:
+		if dm.sg == nil {
+			return ErrNoSubjectGrouping
+		}
+
 		users, e := dm.sg.IndividualsIn(sub.(Role))
 		if e != nil {
 			return e
@@ -329,6 +354,10 @@ func (dm *decisionMaker) PermittedActions(sub Subject, obj Object) (Action, erro
 }
 
 func (dm *decisionMaker) rebuildUser(user User) error {
+	if dm.sg == nil {
+		return ErrNoSubjectGrouping
+	}
+
 	roles, e := dm.sg.GroupsOf(user)
 	if e != nil {
 		return e
@@ -363,6 +392,10 @@ func (dm *decisionMaker) completeUserByRole(user User, role Role) error {
 }
 
 func (dm *decisionMaker) rebuildArticle(art Article) error {
+	if dm.og == nil {
+		return ErrNoObjectGrouping
+	}
+
 	cats, e := dm.og.GroupsOf(art)
 	if e != nil {
 		return e
