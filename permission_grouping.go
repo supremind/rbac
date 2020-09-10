@@ -76,7 +76,7 @@ func (p *subjectGroupedPermission) PermittedActions(sub Subject, obj Object) (Ac
 	if e != nil {
 		return 0, e
 	}
-	if allowed == allActions {
+	if allowed == AllActions {
 		return allowed, nil
 	}
 
@@ -90,7 +90,7 @@ func (p *subjectGroupedPermission) PermittedActions(sub Subject, obj Object) (Ac
 	}
 	for group := range groups {
 		allowed |= perms[group]
-		if allowed == allActions {
+		if allowed == AllActions {
 			return allowed, nil
 		}
 	}
@@ -171,7 +171,7 @@ func (p *objectGroupedPermission) PermittedActions(sub Subject, obj Object) (Act
 	if e != nil {
 		return 0, e
 	}
-	if allowed == allActions {
+	if allowed == AllActions {
 		return allowed, nil
 	}
 
@@ -187,7 +187,7 @@ func (p *objectGroupedPermission) PermittedActions(sub Subject, obj Object) (Act
 	for group := range groups {
 		if perm, ok := perms[group]; ok {
 			allowed |= perm
-			if allowed == allActions {
+			if allowed == AllActions {
 				return allowed, nil
 			}
 		}
@@ -272,7 +272,7 @@ func (p *bothGroupedPermission) PermittedActions(sub Subject, obj Object) (Actio
 	if e != nil {
 		return 0, e
 	}
-	if allowed == allActions {
+	if allowed == AllActions {
 		return allowed, nil
 	}
 
@@ -280,7 +280,7 @@ func (p *bothGroupedPermission) PermittedActions(sub Subject, obj Object) (Actio
 		return 0, e
 	} else {
 		allowed |= perm
-		if allowed == allActions {
+		if allowed == AllActions {
 			return allowed, nil
 		}
 	}
@@ -289,7 +289,7 @@ func (p *bothGroupedPermission) PermittedActions(sub Subject, obj Object) (Actio
 		return 0, e
 	} else {
 		allowed |= perm
-		if allowed == allActions {
+		if allowed == AllActions {
 			return allowed, nil
 		}
 	}
@@ -312,7 +312,7 @@ func (p *bothGroupedPermission) PermittedActions(sub Subject, obj Object) (Actio
 			}
 
 			allowed |= act
-			if allowed == allActions {
+			if allowed == AllActions {
 				return allowed, nil
 			}
 		}

@@ -4,9 +4,11 @@ package rbac
 // an individual could belong to any number of groups,
 // and a group could contain any individuals or other groups.
 type Grouping interface {
-	Join(Entity, Group) error
-	Leave(Entity, Group) error
+	GroupingWriter
+	GroupingReader
+}
 
+type GroupingReader interface {
 	IsIn(Individual, Group) (bool, error)
 
 	AllGroups() (map[Group]struct{}, error)
@@ -17,7 +19,11 @@ type Grouping interface {
 
 	ImmediateEntitiesIn(Group) (map[Entity]struct{}, error)
 	ImmediateGroupsOf(Entity) (map[Group]struct{}, error)
+}
 
+type GroupingWriter interface {
+	Join(Entity, Group) error
+	Leave(Entity, Group) error
 	RemoveGroup(Group) error
 	RemoveIndividual(Individual) error
 }
