@@ -4,16 +4,16 @@ import "strings"
 
 type Action uint32
 
+// preset actions, users can reset these and define others
 const (
 	Exec Action = 1 << iota
 	Write
 	Read
 
-	None Action = 0
-
-	ReadWrite     = Read | Write
-	ReadExec      = Read | Exec
-	ReadWriteExec = Read | Write | Exec
+	None          Action = 0
+	ReadWrite            = Read | Write
+	ReadExec             = Read | Exec
+	ReadWriteExec        = Read | Write | Exec
 )
 
 var AllActions = ReadWriteExec
