@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var userToArticlePermissions = []struct {
+var directPolices = []struct {
 	sub User
 	obj Article
 	act Action
@@ -55,13 +55,13 @@ var _ = Describe("base permitter implementation", func() {
 			p := tp.p
 
 			BeforeEach(func() {
-				for _, tc := range userToArticlePermissions {
+				for _, tc := range directPolices {
 					Expect(p.Permit(tc.sub, tc.obj, tc.act)).To(Succeed())
 				}
 			})
 
 			Context("check init polices", func() {
-				for _, tc := range userToArticlePermissions {
+				for _, tc := range directPolices {
 					It("should be allowed", func() {
 						Expect(p.Shall(tc.sub, tc.obj, tc.act)).To(BeTrue(), fmt.Sprintf("%s -[%s]-> %s", tc.sub, tc.act, tc.obj))
 					})
