@@ -2,7 +2,7 @@ package rbac
 
 import "strings"
 
-type Action uint16
+type Action uint32
 
 const (
 	Exec Action = 1 << iota
@@ -14,9 +14,31 @@ const (
 	ReadWrite     = Read | Write
 	ReadExec      = Read | Exec
 	ReadWriteExec = Read | Write | Exec
-
-	allActions = ReadWriteExec
 )
+
+var AllActions = ReadWriteExec
+
+var actionNames = map[Action]string{
+	Read:  "read",
+	Write: "write",
+	Exec:  "exec",
+}
+
+func ResetActions(names ...string) []Action {
+	actionNames = make(map[Action]string)
+	actions := make([]Action, 0, len(names))
+	AllActions = 0
+
+	for i, name := range names {
+		a := Action(1 << i)
+		actionNames[a] = name
+		actions = append(actions, a)
+		AllActions |= a
+
+	}
+
+	return actions
+}
 
 func (a Action) IsIn(b Action) bool {
 	return a|b == b
@@ -46,19 +68,11 @@ func (a Action) String() string {
 	as := a.Split()
 	ns := make([]string, 0, len(as))
 	for _, a := range as {
-		ns = append(ns, a.name())
+		n, ok := actionNames[a]
+		if !ok {
+			n = "unknown"
+		}
+		ns = append(ns, n)
 	}
 	return strings.Join(ns, "|")
-}
-
-func (a Action) name() string {
-	n, ok := map[Action]string{
-		Read:  "read",
-		Write: "write",
-		Exec:  "exec",
-	}[a]
-	if !ok {
-		n = "unknown"
-	}
-	return n
 }
