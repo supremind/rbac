@@ -75,7 +75,7 @@ var _ = Describe("subject grouped", func() {
 
 			DescribeTable("object permissions",
 				func(obj Object, perms map[Subject]Action) {
-					Expect(p.PermissionsTo(obj)).To(Equal(perms))
+					Expect(p.PermissionsOn(obj)).To(Equal(perms))
 				},
 				Entry("project apollo's permissions", Article("project apollo"), map[Subject]Action{
 					Role("2_0"): Read,

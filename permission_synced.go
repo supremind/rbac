@@ -31,10 +31,10 @@ func (p *syncedPermission) Shall(sub Subject, obj Object, act Action) (bool, err
 	return p.p.Shall(sub, obj, act)
 }
 
-func (p *syncedPermission) PermissionsTo(obj Object) (map[Subject]Action, error) {
+func (p *syncedPermission) PermissionsOn(obj Object) (map[Subject]Action, error) {
 	p.RLock()
 	defer p.RUnlock()
-	return p.p.PermissionsTo(obj)
+	return p.p.PermissionsOn(obj)
 }
 
 func (p *syncedPermission) PermissionsFor(sub Subject) (map[Object]Action, error) {

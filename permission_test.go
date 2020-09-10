@@ -80,7 +80,7 @@ var _ = Describe("base permitter implementation", func() {
 
 			DescribeTable("query permissions to object",
 				func(obj Object, perm map[Subject]Action) {
-					Expect(p.PermissionsTo(obj)).To(Equal(perm))
+					Expect(p.PermissionsOn(obj)).To(Equal(perm))
 				},
 				Entry("permissions to operation market garden", Article("operation market garden"), map[Subject]Action{
 					User("alan"):   ReadWriteExec,

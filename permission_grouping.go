@@ -28,7 +28,7 @@ func (p *subjectGroupedPermission) Shall(sub Subject, obj Object, act Action) (b
 	if e != nil {
 		return false, e
 	}
-	perms, e := p.Permission.PermissionsTo(obj)
+	perms, e := p.Permission.PermissionsOn(obj)
 	if e != nil {
 		return false, e
 	}
@@ -84,7 +84,7 @@ func (p *subjectGroupedPermission) PermittedActions(sub Subject, obj Object) (Ac
 	if e != nil {
 		return 0, e
 	}
-	perms, e := p.Permission.PermissionsTo(obj)
+	perms, e := p.Permission.PermissionsOn(obj)
 	if e != nil {
 		return 0, e
 	}
@@ -140,8 +140,8 @@ func (p *objectGroupedPermission) Shall(sub Subject, obj Object, act Action) (bo
 	return false, nil
 }
 
-func (p *objectGroupedPermission) PermissionsTo(obj Object) (map[Subject]Action, error) {
-	perms, e := p.Permission.PermissionsTo(obj)
+func (p *objectGroupedPermission) PermissionsOn(obj Object) (map[Subject]Action, error) {
+	perms, e := p.Permission.PermissionsOn(obj)
 	if e != nil {
 		return nil, e
 	}
@@ -154,7 +154,7 @@ func (p *objectGroupedPermission) PermissionsTo(obj Object) (map[Subject]Action,
 		return nil, e
 	}
 	for cat := range cats {
-		cp, e := p.Permission.PermissionsTo(cat)
+		cp, e := p.Permission.PermissionsOn(cat)
 		if e != nil {
 			return nil, e
 		}
@@ -259,8 +259,8 @@ func (p *bothGroupedPermission) Shall(sub Subject, obj Object, act Action) (bool
 	return false, nil
 }
 
-func (p *bothGroupedPermission) PermissionsTo(obj Object) (map[Subject]Action, error) {
-	return p.op.PermissionsTo(obj)
+func (p *bothGroupedPermission) PermissionsOn(obj Object) (map[Subject]Action, error) {
+	return p.op.PermissionsOn(obj)
 }
 
 func (p *bothGroupedPermission) PermissionsFor(sub Subject) (map[Object]Action, error) {

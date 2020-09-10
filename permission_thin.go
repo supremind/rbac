@@ -61,7 +61,7 @@ func (p *thinPermission) Shall(sub Subject, obj Object, act Action) (bool, error
 	return false, nil
 }
 
-func (p *thinPermission) PermissionsTo(obj Object) (map[Subject]Action, error) {
+func (p *thinPermission) PermissionsOn(obj Object) (map[Subject]Action, error) {
 	return p.byObject[obj], nil
 }
 
