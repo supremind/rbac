@@ -28,7 +28,7 @@ func (g *persistedGrouping) loadPersisted() error {
 		return e
 	}
 	for _, policy := range polices {
-		if e := g.Grouping.Join(policy.Individual, policy.Group); e != nil {
+		if e := g.Grouping.Join(policy.Entity, policy.Group); e != nil {
 			return e
 		}
 	}

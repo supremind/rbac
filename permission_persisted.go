@@ -1,6 +1,9 @@
 package rbac
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 type persistedPermission struct {
 	persist PermissionPersister
@@ -61,10 +64,7 @@ func (p *persistedPermission) startWatching(ctx context.Context) error {
 
 func (p *persistedPermission) coordinateChange(change PermissionChange) error {
 	switch change.Method {
-	case PersistInsert:
-		return p.Permission.Permit(change.Subject, change.Object, change.Action)
-
-	case PersistUpdate:
+	case PersistInsert, PersistUpdate:
 		prev, e := p.Permission.PermittedActions(change.Subject, change.Object)
 		if e != nil {
 			return e
@@ -86,7 +86,7 @@ func (p *persistedPermission) coordinateChange(change PermissionChange) error {
 		}
 	}
 
-	return nil
+	return fmt.Errorf("%w: permission persister changes: %s", ErrUnsupportedChange, change.Method)
 }
 
 // Permit subject to perform action on object

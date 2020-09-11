@@ -19,13 +19,12 @@ type PermissionPersister interface {
 }
 
 type GroupingPolicy struct {
-	Individual Individual
-	Group      Group
+	Entity Entity
+	Group  Group
 }
 
 type GroupingPolicyChange struct {
-	Entity Entity
-	Group  Group
+	GroupingPolicy
 	Method PersistMethod
 }
 
@@ -36,10 +35,8 @@ type PermissionPolicy struct {
 }
 
 type PermissionChange struct {
-	Subject Subject
-	Object  Object
-	Action  Action
-	Method  PersistMethod
+	PermissionPolicy
+	Method PersistMethod
 }
 
 type PersistMethod string
