@@ -1,4 +1,8 @@
-package rbac
+package decision
+
+import (
+	. "github.com/supremind/rbac/types"
+)
 
 var _ DecisionMaker = (*decisionMaker)(nil)
 
@@ -10,7 +14,7 @@ type decisionMaker struct {
 	uap map[User]map[Article]Action // cache user -> article -> action permissions
 }
 
-func newDecisionMaker(sg Grouping, og Grouping, p Permission) *decisionMaker {
+func NewDecisionMaker(sg Grouping, og Grouping, p Permission) *decisionMaker {
 	return &decisionMaker{
 		sg:  sg,
 		og:  og,

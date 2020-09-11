@@ -1,4 +1,4 @@
-package rbac
+package types
 
 import "context"
 
@@ -15,7 +15,7 @@ type PermissionPersister interface {
 	Upsert(Subject, Object, Action) error
 	Remove(Subject, Object) error
 	List() ([]PermissionPolicy, error)
-	Watch(context.Context) (<-chan PermissionChange, error)
+	Watch(context.Context) (<-chan PermissionPolicyChange, error)
 }
 
 type GroupingPolicy struct {
@@ -34,7 +34,7 @@ type PermissionPolicy struct {
 	Action  Action
 }
 
-type PermissionChange struct {
+type PermissionPolicyChange struct {
 	PermissionPolicy
 	Method PersistMethod
 }

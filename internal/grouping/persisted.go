@@ -1,8 +1,11 @@
-package rbac
+package grouping
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	. "github.com/supremind/rbac/types"
 )
 
 type persistedGrouping struct {
@@ -10,7 +13,9 @@ type persistedGrouping struct {
 	Grouping
 }
 
-func newPersistedGrouping(ctx context.Context, inner Grouping, persist GroupingPersister) (*persistedGrouping, error) {
+// NewPersistedGrouping create a persisted Grouping based on given inner Grouping,
+// the inner Grouping must be synced
+func NewPersistedGrouping(ctx context.Context, inner Grouping, persist GroupingPersister) (*persistedGrouping, error) {
 	g := &persistedGrouping{persist: persist, Grouping: inner}
 	if e := g.loadPersisted(); e != nil {
 		return nil, e
@@ -62,7 +67,12 @@ func (g *persistedGrouping) coordinateChange(change GroupingPolicyChange) error 
 	case PersistInsert:
 		return g.Grouping.Join(change.Entity, change.Group)
 	case PersistDelete:
-		return g.Grouping.Leave(change.Entity, change.Group)
+		if e := g.Grouping.Leave(change.Entity, change.Group); e != nil {
+			if errors.Is(e, ErrNotFound) {
+				return nil
+			}
+			return nil
+		}
 	}
 
 	return fmt.Errorf("%w: grouping persister changes: %s", ErrUnsupportedChange, change.Method)
@@ -86,12 +96,12 @@ func (g *persistedGrouping) RemoveGroup(group Group) error {
 	if e := g.persist.RemoveByGroup(group); e != nil {
 		return e
 	}
-	return g.RemoveGroup(group)
+	return g.Grouping.RemoveGroup(group)
 }
 
 func (g *persistedGrouping) RemoveIndividual(ind Individual) error {
 	if e := g.persist.RemoveByIndividual(ind); e != nil {
 		return e
 	}
-	return g.RemoveIndividual(ind)
+	return g.Grouping.RemoveIndividual(ind)
 }

@@ -1,4 +1,4 @@
-package rbac
+package types
 
 type Subject interface{}
 type Object interface{}

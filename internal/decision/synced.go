@@ -1,6 +1,10 @@
-package rbac
+package decision
 
-import "sync"
+import (
+	"sync"
+
+	. "github.com/supremind/rbac/types"
+)
 
 var _ DecisionMaker = (*syncedDecisionMaker)(nil)
 
@@ -9,7 +13,7 @@ type syncedDecisionMaker struct {
 	dm DecisionMaker
 }
 
-func newSyncedDecisionMaker(dm DecisionMaker) *syncedDecisionMaker {
+func NewSyncedDecisionMaker(dm DecisionMaker) *syncedDecisionMaker {
 	return &syncedDecisionMaker{dm: dm}
 }
 

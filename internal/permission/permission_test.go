@@ -1,12 +1,24 @@
-package rbac
+package permission_test
 
 import (
+	"context"
 	"fmt"
+	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+
+	. "github.com/supremind/rbac/internal/grouping"
+	. "github.com/supremind/rbac/internal/permission"
+	. "github.com/supremind/rbac/internal/persist/fake"
+	. "github.com/supremind/rbac/types"
 )
+
+func TestPermission(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "permission test suit")
+}
 
 var directPolices = []struct {
 	sub User
@@ -30,23 +42,31 @@ var _ = Describe("base permitter implementation", func() {
 	}{
 		{
 			name: "thin",
-			p:    newThinPermission(),
+			p:    NewThinPermission(),
 		},
 		{
 			name: "synced",
-			p:    newSyncedPermission(newThinPermission()),
+			p:    NewSyncedPermission(NewThinPermission()),
 		},
 		{
 			name: "subject grouped",
-			p:    newSubjectGroupedPermission(newFatGrouping(), newThinPermission()),
+			p:    NewSubjectGroupedPermission(NewFatGrouping(), NewThinPermission()),
 		},
 		{
 			name: "object grouped",
-			p:    newObjectGroupedPermission(newFatGrouping(), newThinPermission()),
+			p:    NewObjectGroupedPermission(NewFatGrouping(), NewThinPermission()),
 		},
 		{
 			name: "both grouped",
-			p:    newBothGroupedPermission(newFatGrouping(), newFatGrouping(), newThinPermission()),
+			p:    NewBothGroupedPermission(NewFatGrouping(), NewFatGrouping(), NewThinPermission()),
+		},
+		{
+			name: "persisted",
+			p: func() Permission {
+				p, e := NewPersistedPermission(context.Background(), NewSyncedPermission(NewThinPermission()), NewPermissionPersister(context.Background()))
+				Expect(e).To(Succeed())
+				return p
+			}(),
 		},
 	}
 

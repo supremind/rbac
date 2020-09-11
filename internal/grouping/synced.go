@@ -1,6 +1,10 @@
-package rbac
+package grouping
 
-import "sync"
+import (
+	"sync"
+
+	. "github.com/supremind/rbac/types"
+)
 
 var _ Grouping = (*syncedGrouping)(nil)
 
@@ -10,7 +14,7 @@ type syncedGrouping struct {
 	sync.RWMutex
 }
 
-func newSyncedGrouping(g Grouping) *syncedGrouping {
+func NewSyncedGrouping(g Grouping) *syncedGrouping {
 	return &syncedGrouping{
 		g: g,
 	}

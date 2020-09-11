@@ -1,4 +1,4 @@
-package rbac
+package types
 
 import "errors"
 

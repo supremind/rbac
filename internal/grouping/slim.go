@@ -1,6 +1,10 @@
-package rbac
+package grouping
 
-import "fmt"
+import (
+	"fmt"
+
+	. "github.com/supremind/rbac/types"
+)
 
 var _ Grouping = (*slimGrouping)(nil)
 
@@ -12,7 +16,7 @@ type slimGrouping struct {
 	maxDepth int
 }
 
-func newSlimGrouping() *slimGrouping {
+func NewSlimGrouping() *slimGrouping {
 	return &slimGrouping{
 		parents:  make(map[Entity]map[Group]struct{}),
 		children: make(map[Group]map[Entity]struct{}),

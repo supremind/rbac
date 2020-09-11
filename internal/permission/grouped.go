@@ -1,4 +1,8 @@
-package rbac
+package permission
+
+import (
+	. "github.com/supremind/rbac/types"
+)
 
 var _ Permission = (*subjectGroupedPermission)(nil)
 var _ Permission = (*objectGroupedPermission)(nil)
@@ -8,7 +12,7 @@ type subjectGroupedPermission struct {
 	Permission
 }
 
-func newSubjectGroupedPermission(sg Grouping, p Permission) *subjectGroupedPermission {
+func NewSubjectGroupedPermission(sg Grouping, p Permission) *subjectGroupedPermission {
 	return &subjectGroupedPermission{
 		sg:         sg,
 		Permission: p,
@@ -103,7 +107,7 @@ type objectGroupedPermission struct {
 	Permission
 }
 
-func newObjectGroupedPermission(og Grouping, p Permission) *objectGroupedPermission {
+func NewObjectGroupedPermission(og Grouping, p Permission) *objectGroupedPermission {
 	return &objectGroupedPermission{
 		og:         og,
 		Permission: p,
@@ -204,12 +208,12 @@ type bothGroupedPermission struct {
 	Permission
 }
 
-func newBothGroupedPermission(sg, og Grouping, p Permission) *bothGroupedPermission {
+func NewBothGroupedPermission(sg, og Grouping, p Permission) *bothGroupedPermission {
 	return &bothGroupedPermission{
 		sg:         sg,
 		og:         og,
-		sp:         newSubjectGroupedPermission(sg, p),
-		op:         newObjectGroupedPermission(og, p),
+		sp:         NewSubjectGroupedPermission(sg, p),
+		op:         NewObjectGroupedPermission(og, p),
 		Permission: p,
 	}
 }

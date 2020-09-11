@@ -1,6 +1,10 @@
-package rbac
+package permission
 
-import "fmt"
+import (
+	"fmt"
+
+	. "github.com/supremind/rbac/types"
+)
 
 var _ Permission = (*thinPermission)(nil)
 
@@ -10,7 +14,7 @@ type thinPermission struct {
 	byObject  map[Object]map[Subject]Action
 }
 
-func newThinPermission() *thinPermission {
+func NewThinPermission() *thinPermission {
 	return &thinPermission{
 		bySubject: make(map[Subject]map[Object]Action),
 		byObject:  make(map[Object]map[Subject]Action),

@@ -1,4 +1,8 @@
-package rbac
+package grouping
+
+import (
+	. "github.com/supremind/rbac/types"
+)
 
 var _ Grouping = (*fatGrouping)(nil)
 
@@ -16,9 +20,9 @@ type fatGrouping struct {
 	allGroups      map[Group]struct{}
 }
 
-func newFatGrouping() *fatGrouping {
+func NewFatGrouping() *fatGrouping {
 	return &fatGrouping{
-		slim:           *newSlimGrouping(),
+		slim:           *NewSlimGrouping(),
 		groups:         make(map[Entity]map[Group]struct{}),
 		individuals:    make(map[Group]map[Individual]struct{}),
 		allIndividuals: make(map[Individual]struct{}),

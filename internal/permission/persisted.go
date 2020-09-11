@@ -1,8 +1,10 @@
-package rbac
+package permission
 
 import (
 	"context"
 	"fmt"
+
+	. "github.com/supremind/rbac/types"
 )
 
 type persistedPermission struct {
@@ -10,7 +12,7 @@ type persistedPermission struct {
 	Permission
 }
 
-func newPersistedPermission(ctx context.Context, inner Permission, persist PermissionPersister) (*persistedPermission, error) {
+func NewPersistedPermission(ctx context.Context, inner Permission, persist PermissionPersister) (*persistedPermission, error) {
 	p := &persistedPermission{
 		persist:    persist,
 		Permission: inner,
@@ -62,7 +64,7 @@ func (p *persistedPermission) startWatching(ctx context.Context) error {
 	return nil
 }
 
-func (p *persistedPermission) coordinateChange(change PermissionChange) error {
+func (p *persistedPermission) coordinateChange(change PermissionPolicyChange) error {
 	switch change.Method {
 	case PersistInsert, PersistUpdate:
 		prev, e := p.Permission.PermittedActions(change.Subject, change.Object)

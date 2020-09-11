@@ -1,85 +1,47 @@
-package rbac
+package permission
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+
+	. "github.com/supremind/rbac/internal/decision"
+	. "github.com/supremind/rbac/internal/grouping"
+	. "github.com/supremind/rbac/internal/testdata"
+	. "github.com/supremind/rbac/types"
 )
 
-var userToArticlePolices = []struct {
-	sub User
-	obj Article
-	act Action
-}{}
-
-var userToCategoryPolices = []struct {
-	sub User
-	obj Category
-	act Action
-}{
-	{sub: User("0"), obj: Category("war"), act: Read},
-	{sub: User("0"), obj: Category("peace"), act: ReadWrite},
-	{sub: User("0"), obj: Category("fail"), act: Read},
-	{sub: User("1"), obj: Category("europe"), act: ReadExec},
-	{sub: User("2"), obj: Category("fail"), act: ReadWrite},
-	{sub: User("3"), obj: Category("war"), act: ReadExec},
-}
-
-var roleToArticlePolices = []struct {
-	sub Role
-	obj Article
-	act Action
-}{
-	{sub: Role("2_0"), obj: Article("project apollo"), act: Read},
-	{sub: Role("2_1"), obj: Article("project apollo"), act: ReadWriteExec},
-	{sub: Role("3_0"), obj: Article("manhattan project"), act: Read},
-	{sub: Role("3_1"), obj: Article("manhattan project"), act: ReadWrite},
-	{sub: Role("3_2"), obj: Article("manhattan project"), act: ReadExec},
-}
-
-var roleToCategoryPolices = []struct {
-	sub Role
-	obj Category
-	act Action
-}{
-	{sub: Role("2_0"), obj: Category("europe"), act: Read},
-	{sub: Role("2_1"), obj: Category("europe"), act: ReadWriteExec},
-	{sub: Role("3_0"), obj: Category("war"), act: Read},
-	{sub: Role("3_1"), obj: Category("war"), act: ReadWrite},
-	{sub: Role("3_2"), obj: Category("war"), act: ReadExec},
-}
-
 func loadRoleToArticlePolices(p Permission) {
-	for _, perm := range roleToArticlePolices {
+	for _, perm := range RoleToArticlePolices {
 		perm := perm
-		Expect(p.Permit(perm.sub, perm.obj, perm.act)).To(Succeed())
+		Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
 	}
 }
 
 func loadUserToCategoryPolices(p Permission) {
-	for _, perm := range userToCategoryPolices {
+	for _, perm := range UserToCategoryPolices {
 		perm := perm
-		Expect(p.Permit(perm.sub, perm.obj, perm.act)).To(Succeed())
+		Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
 	}
 }
 
 func loadRoleToCategoryPolices(p Permission) {
-	for _, perm := range roleToCategoryPolices {
+	for _, perm := range RoleToCategoryPolices {
 		perm := perm
-		Expect(p.Permit(perm.sub, perm.obj, perm.act)).To(Succeed())
+		Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
 	}
 }
 
 func loadUserToArticlePolices(p Permission) {
-	for _, perm := range userToArticlePolices {
+	for _, perm := range UserToArticlePolices {
 		perm := perm
-		Expect(p.Permit(perm.sub, perm.obj, perm.act)).To(Succeed())
+		Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
 	}
 }
 
 func newTestSubjectGrouping() Grouping {
-	g := newFatGrouping()
-	for user, roles := range userRoles {
+	g := NewFatGrouping()
+	for user, roles := range UserRoles {
 		for _, role := range roles {
 			Expect(g.Join(user, role)).To(Succeed())
 		}
@@ -88,9 +50,9 @@ func newTestSubjectGrouping() Grouping {
 }
 
 func newTestObjectGrouping() Grouping {
-	g := newFatGrouping()
-	for _, tc := range objectGroupings {
-		Expect(g.Join(tc.art, tc.cat)).To(Succeed())
+	g := NewFatGrouping()
+	for _, perm := range ObjectGroupings {
+		Expect(g.Join(perm.Art, perm.Cat)).To(Succeed())
 	}
 	return g
 }
@@ -102,7 +64,7 @@ var subjectGroupedPermissions = []struct {
 	{
 		name: "subject grouped",
 		ctor: func() Permission {
-			p := newSubjectGroupedPermission(newTestSubjectGrouping(), newThinPermission())
+			p := NewSubjectGroupedPermission(newTestSubjectGrouping(), NewThinPermission())
 			loadRoleToArticlePolices(p)
 			return p
 		},
@@ -110,7 +72,7 @@ var subjectGroupedPermissions = []struct {
 	{
 		name: "both grouped",
 		ctor: func() Permission {
-			p := newBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), newThinPermission())
+			p := NewBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), NewThinPermission())
 			loadRoleToArticlePolices(p)
 			return p
 		},
@@ -118,7 +80,7 @@ var subjectGroupedPermissions = []struct {
 	{
 		name: "subject grouped decision maker",
 		ctor: func() Permission {
-			p := newDecisionMaker(newTestSubjectGrouping(), nil, newThinPermission())
+			p := NewDecisionMaker(newTestSubjectGrouping(), nil, NewThinPermission())
 			loadRoleToArticlePolices(p)
 			return p
 		},
@@ -132,7 +94,7 @@ var objectGroupedPermissions = []struct {
 	{
 		name: "object grouped",
 		ctor: func() Permission {
-			p := newObjectGroupedPermission(newTestObjectGrouping(), newThinPermission())
+			p := NewObjectGroupedPermission(newTestObjectGrouping(), NewThinPermission())
 			loadUserToCategoryPolices(p)
 			return p
 		},
@@ -140,7 +102,7 @@ var objectGroupedPermissions = []struct {
 	{
 		name: "both grouped",
 		ctor: func() Permission {
-			p := newBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), newThinPermission())
+			p := NewBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), NewThinPermission())
 			loadUserToCategoryPolices(p)
 			return p
 		},
@@ -148,7 +110,7 @@ var objectGroupedPermissions = []struct {
 	{
 		name: "object grouped decision maker",
 		ctor: func() Permission {
-			p := newDecisionMaker(nil, newTestObjectGrouping(), newThinPermission())
+			p := NewDecisionMaker(nil, newTestObjectGrouping(), NewThinPermission())
 			loadUserToCategoryPolices(p)
 			return p
 		},
@@ -162,7 +124,7 @@ var bothGroupedPermissions = []struct {
 	{
 		name: "simple permission",
 		ctor: func() Permission {
-			p := newBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), newThinPermission())
+			p := NewBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), NewThinPermission())
 			loadUserToArticlePolices(p)
 			loadRoleToArticlePolices(p)
 			loadUserToCategoryPolices(p)
@@ -178,9 +140,9 @@ var _ = Describe("subject grouped permission", func() {
 			p := tp.ctor()
 
 			Context("init permissions", func() {
-				for _, tc := range roleToArticlePolices {
+				for _, perm := range RoleToArticlePolices {
 					It("should be permitted", func() {
-						Expect(p.Shall(tc.sub, tc.obj, tc.act)).To(BeTrue())
+						Expect(p.Shall(perm.Sub, perm.Obj, perm.Act)).To(BeTrue())
 					})
 				}
 			})
@@ -250,10 +212,10 @@ var _ = Describe("object grouped permission", func() {
 			p := tp.ctor()
 
 			Describe("init permissions", func() {
-				for _, perm := range userToCategoryPolices {
+				for _, perm := range UserToCategoryPolices {
 					perm := perm
 					It("should be permitted", func() {
-						Expect(p.Shall(perm.sub, perm.obj, perm.act)).To(BeTrue())
+						Expect(p.Shall(perm.Sub, perm.Obj, perm.Act)).To(BeTrue())
 					})
 				}
 			})
@@ -304,37 +266,37 @@ var _ = Describe("both grouped permission", func() {
 			p := tp.ctor()
 
 			Describe("check user to article polices", func() {
-				for _, perm := range userToArticlePolices {
+				for _, perm := range UserToArticlePolices {
 					perm := perm
 					It("should be permitted", func() {
-						Expect(p.Shall(perm.sub, perm.obj, perm.act)).To(BeTrue())
+						Expect(p.Shall(perm.Sub, perm.Obj, perm.Act)).To(BeTrue())
 					})
 				}
 			})
 
 			Describe("check user to category polices", func() {
-				for _, perm := range userToCategoryPolices {
+				for _, perm := range UserToCategoryPolices {
 					perm := perm
 					It("should be permitted", func() {
-						Expect(p.Shall(perm.sub, perm.obj, perm.act)).To(BeTrue())
+						Expect(p.Shall(perm.Sub, perm.Obj, perm.Act)).To(BeTrue())
 					})
 				}
 			})
 
 			Describe("check role to article polices", func() {
-				for _, perm := range roleToArticlePolices {
+				for _, perm := range RoleToArticlePolices {
 					perm := perm
 					It("should be permitted", func() {
-						Expect(p.Shall(perm.sub, perm.obj, perm.act)).To(BeTrue())
+						Expect(p.Shall(perm.Sub, perm.Obj, perm.Act)).To(BeTrue())
 					})
 				}
 			})
 
 			Describe("check role to category polices", func() {
-				for _, perm := range roleToCategoryPolices {
+				for _, perm := range RoleToCategoryPolices {
 					perm := perm
 					It("should be permitted", func() {
-						Expect(p.Shall(perm.sub, perm.obj, perm.act)).To(BeTrue())
+						Expect(p.Shall(perm.Sub, perm.Obj, perm.Act)).To(BeTrue())
 					})
 				}
 			})

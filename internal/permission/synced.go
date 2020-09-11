@@ -1,6 +1,10 @@
-package rbac
+package permission
 
-import "sync"
+import (
+	"sync"
+
+	. "github.com/supremind/rbac/types"
+)
 
 var _ Permission = (*syncedPermission)(nil)
 
@@ -9,7 +13,7 @@ type syncedPermission struct {
 	sync.RWMutex
 }
 
-func newSyncedPermission(p Permission) *syncedPermission {
+func NewSyncedPermission(p Permission) *syncedPermission {
 	return &syncedPermission{p: p}
 }
 

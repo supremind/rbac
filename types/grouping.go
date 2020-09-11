@@ -1,4 +1,4 @@
-package rbac
+package types
 
 // Grouping defines individual-group relationships,
 // an individual could belong to any number of groups,

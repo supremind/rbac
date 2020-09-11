@@ -1,22 +1,14 @@
-package rbac
+package grouping_test
 
 import (
 	"fmt"
 	"reflect"
-	"testing"
 
 	"github.com/onsi/gomega/format"
 	"github.com/onsi/gomega/types"
 
-	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-func TestRBAC(t *testing.T) {
-	RegisterFailHandler(Fail)
-	loadUsersAndRoles()
-	RunSpecs(t, "rbac test suit")
-}
 
 func haveKeys(keys ...interface{}) types.GomegaMatcher {
 	return &haveKeysMatcher{

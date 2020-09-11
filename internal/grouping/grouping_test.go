@@ -1,58 +1,29 @@
-package rbac
+package grouping_test
 
 import (
+	"context"
 	"fmt"
 	"strconv"
+	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+
+	. "github.com/supremind/rbac/internal/grouping"
+	. "github.com/supremind/rbac/internal/persist/fake"
+	. "github.com/supremind/rbac/internal/testdata"
+	. "github.com/supremind/rbac/types"
 )
 
-var (
-	userRoles map[User][]Role
-	roleUsers map[Role][]User
-)
-
-func loadUsersAndRoles() {
-	userRoles = make(map[User][]Role)
-	roleUsers = make(map[Role][]User)
-	for i := 0; i < 10; i++ {
-		user := User(strconv.Itoa(i))
-		role2 := Role("2_" + strconv.Itoa(i%2))
-		role3 := Role("3_" + strconv.Itoa(i%3))
-		role5 := Role("5_" + strconv.Itoa(i%5))
-
-		userRoles[user] = []Role{role2, role3, role5}
-		roleUsers[role2] = append(roleUsers[role2], user)
-		roleUsers[role3] = append(roleUsers[role3], user)
-		roleUsers[role5] = append(roleUsers[role5], user)
-	}
+func TestGrouping(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "grouping test suit")
 }
 
-var objectGroupings = []struct {
-	art Article
-	cat Category
-}{
-	{art: Article("project apollo"), cat: Category("peace")},
-	{art: Article("manhattan project"), cat: Category("war")},
-	{art: Article("operation market garden"), cat: Category("war")},
-	{art: Article("operation overlord"), cat: Category("war")},
-
-	{art: Article("project apollo"), cat: Category("america")},
-	{art: Article("manhattan project"), cat: Category("america")},
-	{art: Article("operation market garden"), cat: Category("europe")},
-	{art: Article("operation overlord"), cat: Category("europe")},
-
-	{art: Article("project apollo"), cat: Category("success")},
-	{art: Article("manhattan project"), cat: Category("success")},
-	{art: Article("operation market garden"), cat: Category("success")},
-	{art: Article("operation overlord"), cat: Category("fail")},
-}
-
-var _ = Describe("grouper implementation", func() {
-	Expect(userRoles).NotTo(BeEmpty())
-	Expect(roleUsers).NotTo(BeEmpty())
+var _ = Describe("grouping implementation", func() {
+	Expect(UserRoles).NotTo(BeEmpty())
+	Expect(RoleUsers).NotTo(BeEmpty())
 
 	var groupers = []struct {
 		name string
@@ -60,19 +31,27 @@ var _ = Describe("grouper implementation", func() {
 	}{
 		{
 			name: "slim",
-			g:    newSlimGrouping(),
+			g:    NewSlimGrouping(),
 		},
 		{
 			name: "fat",
-			g:    newFatGrouping(),
+			g:    NewFatGrouping(),
 		},
 		{
 			name: "synced fat",
-			g:    newSyncedGrouping(newFatGrouping()),
+			g:    NewSyncedGrouping(NewFatGrouping()),
 		},
 		{
 			name: "synced slim",
-			g:    newSyncedGrouping(newSlimGrouping()),
+			g:    NewSyncedGrouping(NewSlimGrouping()),
+		},
+		{
+			name: "persisted",
+			g: func() Grouping {
+				g, e := NewPersistedGrouping(context.Background(), NewSyncedGrouping(NewFatGrouping()), NewGroupingPersister(context.Background()))
+				Expect(e).To(Succeed())
+				return g
+			}(),
 		},
 	}
 
@@ -81,7 +60,7 @@ var _ = Describe("grouper implementation", func() {
 			g := tg.g
 
 			BeforeEach(func() {
-				for user, roles := range userRoles {
+				for user, roles := range UserRoles {
 					for _, role := range roles {
 						Expect(g.Join(user, role)).To(Succeed())
 					}
@@ -104,7 +83,7 @@ var _ = Describe("grouper implementation", func() {
 			})
 
 			Context("querying roles of user", func() {
-				for user, roles := range userRoles {
+				for user, roles := range UserRoles {
 					It(fmt.Sprintf("should know roles of %s", user), func() {
 						Expect(g.GroupsOf(user)).To(haveExactKeys(func() []interface{} {
 							is := make([]interface{}, 0, len(roles))
@@ -118,7 +97,7 @@ var _ = Describe("grouper implementation", func() {
 			})
 
 			Context("querying users of role", func() {
-				for role, users := range roleUsers {
+				for role, users := range RoleUsers {
 					It(fmt.Sprintf("should know users of %s", role), func() {
 						Expect(g.IndividualsIn(role)).To(haveExactKeys(func() []interface{} {
 							is := make([]interface{}, 0, len(users))
@@ -132,7 +111,7 @@ var _ = Describe("grouper implementation", func() {
 			})
 
 			Context("checking user-role relationships", func() {
-				for user, roles := range userRoles {
+				for user, roles := range UserRoles {
 					for _, role := range roles {
 						user, role := user, role
 						It(fmt.Sprintf("should know %s is in %s", user, role), func() {
@@ -243,8 +222,8 @@ var _ = Describe("grouper implementation", func() {
 				)
 
 				DescribeTable("querying direct roles of subject",
-					func(sub Subject, roles []interface{}) {
-						Expect(g.ImmediateGroupsOf(sub)).To(haveExactKeys(roles...))
+					func(ent Entity, roles []interface{}) {
+						Expect(g.ImmediateGroupsOf(ent)).To(haveExactKeys(roles...))
 					},
 					Entry("roles of user 9", User("9"), []interface{}{Role("2_1"), Role("3_0"), Role("5_4")}),
 				)

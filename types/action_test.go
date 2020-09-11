@@ -1,10 +1,19 @@
-package rbac
+package types_test
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+
+	. "github.com/supremind/rbac/types"
 )
+
+func TestAction(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "action test suit")
+}
 
 var _ = Describe("action", func() {
 	DescribeTable("is in",
