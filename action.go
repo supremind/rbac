@@ -2,6 +2,8 @@ package rbac
 
 import "strings"
 
+// Action can be done on objects by subjects
+// Actions are power of twos to achieve efficient set operations, like union, intersection, complemention
 type Action uint32
 
 // preset actions, users can reset these and define others
@@ -16,6 +18,7 @@ const (
 	ReadWriteExec        = Read | Write | Exec
 )
 
+// AllActions is union of all actions, it will be reset when ResetActions being called
 var AllActions = ReadWriteExec
 
 var actionNames = map[Action]string{
@@ -34,7 +37,6 @@ func ResetActions(names ...string) []Action {
 		actionNames[a] = name
 		actions = append(actions, a)
 		AllActions |= a
-
 	}
 
 	return actions
@@ -52,6 +54,7 @@ func (a Action) Difference(b Action) Action {
 	return a &^ b
 }
 
+// Split a union of actions to slice of single actions
 func (a Action) Split() []Action {
 	out := make([]Action, 0)
 	op := Action(1)
