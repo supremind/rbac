@@ -9,7 +9,7 @@ This project is still in developing, and is not considered production ready.
 
 ## How it works
 
-![Groupings and Permission](design.drawio.svg)
+![Groupings and Permission](design.drawio.png)
 
 ## Exported interfaces
 
