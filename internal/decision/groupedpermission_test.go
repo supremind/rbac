@@ -1,15 +1,23 @@
-package permission
+package decision_test
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
 	. "github.com/houz42/rbac/internal/decision"
 	. "github.com/houz42/rbac/internal/grouping"
+	. "github.com/houz42/rbac/internal/permission"
 	. "github.com/houz42/rbac/internal/testdata"
 	. "github.com/houz42/rbac/types"
 )
+
+func TestGroupedPermission(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "grouped permission")
+}
 
 func loadRoleToArticlePolices(p Permission) {
 	for _, perm := range RoleToArticlePolices {

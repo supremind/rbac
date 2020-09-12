@@ -1,6 +1,7 @@
-package permission
+package decision
 
 import (
+	. "github.com/houz42/rbac/internal/permission"
 	. "github.com/houz42/rbac/types"
 )
 

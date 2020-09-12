@@ -42,13 +42,13 @@ func New(ctx context.Context, opts ...DecisionMakerOption) (types.DecisionMaker,
 		}
 	}
 	if sg != nil && og != nil {
-		p = permission.NewBothGroupedPermission(sg, og, p)
+		p = decision.NewBothGroupedPermission(sg, og, p)
 	}
 	if sg != nil && og == nil {
-		p = permission.NewSubjectGroupedPermission(sg, p)
+		p = decision.NewSubjectGroupedPermission(sg, p)
 	}
 	if sg == nil && og != nil {
-		p = permission.NewObjectGroupedPermission(og, p)
+		p = decision.NewObjectGroupedPermission(og, p)
 	}
 
 	dm := decision.NewSyncedDecisionMaker(decision.NewDecisionMaker(sg, og, p))
