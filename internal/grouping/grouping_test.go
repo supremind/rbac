@@ -10,10 +10,10 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
-	. "github.com/supremind/rbac/internal/grouping"
-	. "github.com/supremind/rbac/internal/persist/fake"
-	. "github.com/supremind/rbac/internal/testdata"
-	. "github.com/supremind/rbac/types"
+	. "github.com/houz42/rbac/internal/grouping"
+	. "github.com/houz42/rbac/internal/persist/fake"
+	. "github.com/houz42/rbac/internal/testdata"
+	. "github.com/houz42/rbac/types"
 )
 
 func TestGrouping(t *testing.T) {

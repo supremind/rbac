@@ -1,7 +1,7 @@
 package decision
 
 import (
-	. "github.com/supremind/rbac/types"
+	. "github.com/houz42/rbac/types"
 )
 
 var _ DecisionMaker = (*decisionMaker)(nil)

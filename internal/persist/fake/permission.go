@@ -3,7 +3,7 @@ package fake
 import (
 	"context"
 
-	"github.com/supremind/rbac/types"
+	"github.com/houz42/rbac/types"
 )
 
 type permissionPersister struct {

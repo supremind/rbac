@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	. "github.com/supremind/rbac/types"
+	. "github.com/houz42/rbac/types"
 )
 
 type persistedGrouping struct {

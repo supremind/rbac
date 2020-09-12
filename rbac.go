@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/supremind/rbac/internal/decision"
-	"github.com/supremind/rbac/internal/grouping"
-	"github.com/supremind/rbac/internal/permission"
-	"github.com/supremind/rbac/types"
+	"github.com/houz42/rbac/internal/decision"
+	"github.com/houz42/rbac/internal/grouping"
+	"github.com/houz42/rbac/internal/permission"
+	"github.com/houz42/rbac/types"
 )
 
 // New creates a RBAC DecisionMaker

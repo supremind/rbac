@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
-	. "github.com/supremind/rbac/types"
+	. "github.com/houz42/rbac/types"
 )
 
 func TestAction(t *testing.T) {

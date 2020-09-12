@@ -3,7 +3,7 @@ package grouping
 import (
 	"fmt"
 
-	. "github.com/supremind/rbac/types"
+	. "github.com/houz42/rbac/types"
 )
 
 var _ Grouping = (*slimGrouping)(nil)

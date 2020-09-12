@@ -3,7 +3,7 @@ package testdata
 import (
 	"strconv"
 
-	. "github.com/supremind/rbac/types"
+	. "github.com/houz42/rbac/types"
 )
 
 func init() {

@@ -9,10 +9,10 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
-	. "github.com/supremind/rbac/internal/grouping"
-	. "github.com/supremind/rbac/internal/permission"
-	. "github.com/supremind/rbac/internal/persist/fake"
-	. "github.com/supremind/rbac/types"
+	. "github.com/houz42/rbac/internal/grouping"
+	. "github.com/houz42/rbac/internal/permission"
+	. "github.com/houz42/rbac/internal/persist/fake"
+	. "github.com/houz42/rbac/types"
 )
 
 func TestPermission(t *testing.T) {
