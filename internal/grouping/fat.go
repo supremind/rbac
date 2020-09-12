@@ -1,10 +1,10 @@
 package grouping
 
 import (
-	. "github.com/houz42/rbac/types"
+	"github.com/houz42/rbac/types"
 )
 
-var _ Grouping = (*fatGrouping)(nil)
+var _ types.Grouping = (*fatGrouping)(nil)
 
 // fatGrouping caches more information to speed up querying
 // fatGrouping is faster on quering, and slower on removing comprared to slimGrouping
@@ -12,36 +12,37 @@ type fatGrouping struct {
 	slim slimGrouping // no sense to use another implementation
 
 	// entity => all groups it belongs to
-	groups map[Entity]map[Group]struct{}
+	groups map[types.Entity]map[types.Group]struct{}
 	// group => all individuals belongs to it
-	individuals map[Group]map[Individual]struct{}
+	individuals map[types.Group]map[types.Individual]struct{}
 
-	allIndividuals map[Individual]struct{}
-	allGroups      map[Group]struct{}
+	allIndividuals map[types.Individual]struct{}
+	allGroups      map[types.Group]struct{}
 }
 
+// NewFatGrouping creates a new grouping with more cache
 func NewFatGrouping() *fatGrouping {
 	return &fatGrouping{
 		slim:           *NewSlimGrouping(),
-		groups:         make(map[Entity]map[Group]struct{}),
-		individuals:    make(map[Group]map[Individual]struct{}),
-		allIndividuals: make(map[Individual]struct{}),
-		allGroups:      make(map[Group]struct{}),
+		groups:         make(map[types.Entity]map[types.Group]struct{}),
+		individuals:    make(map[types.Group]map[types.Individual]struct{}),
+		allIndividuals: make(map[types.Individual]struct{}),
+		allGroups:      make(map[types.Group]struct{}),
 	}
 }
 
-func (g *fatGrouping) Join(ent Entity, group Group) error {
+func (g *fatGrouping) Join(ent types.Entity, group types.Group) error {
 	if e := g.slim.Join(ent, group); e != nil {
 		return e
 	}
 
 	g.allGroups[group] = struct{}{}
-	if individual, ok := ent.(Individual); ok {
+	if individual, ok := ent.(types.Individual); ok {
 		g.allIndividuals[individual] = struct{}{}
 	}
 
 	if g.groups[ent] == nil {
-		g.groups[ent] = make(map[Group]struct{})
+		g.groups[ent] = make(map[types.Group]struct{})
 	}
 	g.groups[ent][group] = struct{}{}
 	for rr := range g.groups[group] {
@@ -49,12 +50,12 @@ func (g *fatGrouping) Join(ent Entity, group Group) error {
 	}
 
 	if g.individuals[group] == nil {
-		g.individuals[group] = make(map[Individual]struct{})
+		g.individuals[group] = make(map[types.Individual]struct{})
 	}
-	if individual, ok := ent.(Individual); ok {
+	if individual, ok := ent.(types.Individual); ok {
 		g.individuals[group][individual] = struct{}{}
 	} else {
-		for u := range g.individuals[ent.(Group)] {
+		for u := range g.individuals[ent.(types.Group)] {
 			g.individuals[group][u] = struct{}{}
 		}
 	}
@@ -62,7 +63,7 @@ func (g *fatGrouping) Join(ent Entity, group Group) error {
 	return nil
 }
 
-func (g *fatGrouping) Leave(ent Entity, group Group) error {
+func (g *fatGrouping) Leave(ent types.Entity, group types.Group) error {
 	if e := g.slim.Leave(ent, group); e != nil {
 		return e
 	}
@@ -76,7 +77,7 @@ func (g *fatGrouping) Leave(ent Entity, group Group) error {
 	return nil
 }
 
-func (g *fatGrouping) IsIn(individual Individual, group Group) (bool, error) {
+func (g *fatGrouping) IsIn(individual types.Individual, group types.Group) (bool, error) {
 	if individuals, ok := g.individuals[group]; ok {
 		_, ok := individuals[individual]
 		return ok, nil
@@ -84,31 +85,31 @@ func (g *fatGrouping) IsIn(individual Individual, group Group) (bool, error) {
 	return false, nil
 }
 
-func (g *fatGrouping) AllGroups() (map[Group]struct{}, error) {
+func (g *fatGrouping) AllGroups() (map[types.Group]struct{}, error) {
 	return g.allGroups, nil
 }
 
-func (g *fatGrouping) AllIndividuals() (map[Individual]struct{}, error) {
+func (g *fatGrouping) AllIndividuals() (map[types.Individual]struct{}, error) {
 	return g.allIndividuals, nil
 }
 
-func (g *fatGrouping) GroupsOf(ent Entity) (map[Group]struct{}, error) {
+func (g *fatGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
 	return g.groups[ent], nil
 }
 
-func (g *fatGrouping) IndividualsIn(group Group) (map[Individual]struct{}, error) {
+func (g *fatGrouping) IndividualsIn(group types.Group) (map[types.Individual]struct{}, error) {
 	return g.individuals[group], nil
 }
 
-func (g *fatGrouping) ImmediateGroupsOf(ent Entity) (map[Group]struct{}, error) {
+func (g *fatGrouping) ImmediateGroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
 	return g.slim.ImmediateGroupsOf(ent)
 }
 
-func (g *fatGrouping) ImmediateEntitiesIn(group Group) (map[Entity]struct{}, error) {
+func (g *fatGrouping) ImmediateEntitiesIn(group types.Group) (map[types.Entity]struct{}, error) {
 	return g.slim.ImmediateEntitiesIn(group)
 }
 
-func (g *fatGrouping) RemoveGroup(group Group) error {
+func (g *fatGrouping) RemoveGroup(group types.Group) error {
 	delete(g.allGroups, group)
 	delete(g.individuals, group)
 	delete(g.groups, group)
@@ -140,7 +141,7 @@ func (g *fatGrouping) RemoveGroup(group Group) error {
 	return nil
 }
 
-func (g *fatGrouping) RemoveIndividual(individual Individual) error {
+func (g *fatGrouping) RemoveIndividual(individual types.Individual) error {
 	delete(g.allIndividuals, individual)
 	delete(g.groups, individual)
 
@@ -162,13 +163,13 @@ func (g *fatGrouping) RemoveIndividual(individual Individual) error {
 	return nil
 }
 
-func (g *fatGrouping) rebuildGroups(ent Entity) error {
+func (g *fatGrouping) rebuildGroups(ent types.Entity) error {
 	// rebuild groups for entity
 	groups, e := g.ImmediateGroupsOf(ent)
 	if e != nil {
 		return e
 	}
-	g.groups[ent] = make(map[Group]struct{}, len(groups))
+	g.groups[ent] = make(map[types.Group]struct{}, len(groups))
 	for group := range groups {
 		g.groups[ent][group] = struct{}{}
 		for rr := range g.groups[group] {
@@ -176,7 +177,7 @@ func (g *fatGrouping) rebuildGroups(ent Entity) error {
 		}
 	}
 
-	if group, ok := ent.(Group); ok {
+	if group, ok := ent.(types.Group); ok {
 		// rebuild groups for all subjects of ent
 		// fixme: some entity may be rebuilt more than once
 		subs, e := g.ImmediateEntitiesIn(group)
@@ -193,19 +194,19 @@ func (g *fatGrouping) rebuildGroups(ent Entity) error {
 	return nil
 }
 
-func (g *fatGrouping) rebuildIndividuals(group Group) error {
+func (g *fatGrouping) rebuildIndividuals(group types.Group) error {
 	// rebuild individuals of group
 	subs, e := g.ImmediateEntitiesIn(group)
 	if e != nil {
 		return e
 	}
 
-	g.individuals[group] = make(map[Individual]struct{}, len(subs))
+	g.individuals[group] = make(map[types.Individual]struct{}, len(subs))
 	for ent := range subs {
-		if individual, ok := ent.(Individual); ok {
+		if individual, ok := ent.(types.Individual); ok {
 			g.individuals[group][individual] = struct{}{}
 		} else {
-			for individual := range g.individuals[ent.(Group)] {
+			for individual := range g.individuals[ent.(types.Group)] {
 				g.individuals[group][individual] = struct{}{}
 			}
 		}

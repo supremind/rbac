@@ -1,92 +1,93 @@
 package decision
 
 import (
-	. "github.com/houz42/rbac/types"
+	"github.com/houz42/rbac/types"
 )
 
-var _ DecisionMaker = (*decisionMaker)(nil)
+var _ types.DecisionMaker = (*decisionMaker)(nil)
 
 type decisionMaker struct {
-	sg Grouping // optional, subject grouping
-	og Grouping // optional, object grouping
-	p  Permission
+	sg types.Grouping // optional, subject grouping
+	og types.Grouping // optional, object grouping
+	p  types.Permission
 
-	uap map[User]map[Article]Action // cache user -> article -> action permissions
+	uap map[types.User]map[types.Article]types.Action // cache user -> article -> action permissions
 }
 
-func NewDecisionMaker(sg Grouping, og Grouping, p Permission) *decisionMaker {
+// NewDecisionMaker creates a new decision maker
+func NewDecisionMaker(sg types.Grouping, og types.Grouping, p types.Permission) *decisionMaker {
 	return &decisionMaker{
 		sg:  sg,
 		og:  og,
 		p:   p,
-		uap: make(map[User]map[Article]Action),
+		uap: make(map[types.User]map[types.Article]types.Action),
 	}
 }
 
 // SubjectJoin joins a user or a sub role to a role
-func (dm *decisionMaker) SubjectJoin(sub Subject, role Role) error {
+func (dm *decisionMaker) SubjectJoin(sub types.Subject, role types.Role) error {
 	if e := dm.sg.Join(sub, role); e != nil {
 		return e
 	}
 
 	switch sub.(type) {
-	case User:
-		return dm.completeUserByRole(sub.(User), role)
+	case types.User:
+		return dm.completeUserByRole(sub.(types.User), role)
 
-	case Role:
-		users, e := dm.sg.IndividualsIn(sub.(Role))
+	case types.Role:
+		users, e := dm.sg.IndividualsIn(sub.(types.Role))
 		if e != nil {
 			return e
 		}
 		for ind := range users {
-			if e := dm.completeUserByRole(ind.(User), role); e != nil {
+			if e := dm.completeUserByRole(ind.(types.User), role); e != nil {
 				return e
 			}
 		}
 
 	default:
-		return ErrInvlaidSubject
+		return types.ErrInvlaidSubject
 	}
 
 	return nil
 }
 
 // SubjectLeave removes a user or a sub role from a role
-func (dm *decisionMaker) SubjectLeave(sub Subject, role Role) error {
+func (dm *decisionMaker) SubjectLeave(sub types.Subject, role types.Role) error {
 	if e := dm.sg.Leave(sub, role); e != nil {
 		return e
 	}
 
 	switch sub.(type) {
-	case User:
-		return dm.rebuildUser(sub.(User))
+	case types.User:
+		return dm.rebuildUser(sub.(types.User))
 
-	case Role:
-		users, e := dm.sg.IndividualsIn(sub.(Role))
+	case types.Role:
+		users, e := dm.sg.IndividualsIn(sub.(types.Role))
 		if e != nil {
 			return e
 		}
 		for user := range users {
-			if e := dm.rebuildUser(user.(User)); e != nil {
+			if e := dm.rebuildUser(user.(types.User)); e != nil {
 				return e
 			}
 		}
 
 	default:
-		return ErrInvlaidSubject
+		return types.ErrInvlaidSubject
 	}
 
 	return nil
 }
 
 // RemoveUser removes a user and all policies about it
-func (dm *decisionMaker) RemoveUser(user User) error {
+func (dm *decisionMaker) RemoveUser(user types.User) error {
 	delete(dm.uap, user)
 	return dm.sg.RemoveIndividual(user)
 }
 
 // RemoveRole removes a role and all policies about it
-func (dm *decisionMaker) RemoveRole(role Role) error {
+func (dm *decisionMaker) RemoveRole(role types.Role) error {
 	users, e := dm.sg.IndividualsIn(role)
 	if e != nil {
 		return e
@@ -97,7 +98,7 @@ func (dm *decisionMaker) RemoveRole(role Role) error {
 	}
 
 	for user := range users {
-		if e := dm.rebuildUser(user.(User)); e != nil {
+		if e := dm.rebuildUser(user.(types.User)); e != nil {
 			return e
 		}
 	}
@@ -106,67 +107,67 @@ func (dm *decisionMaker) RemoveRole(role Role) error {
 }
 
 // Subjects returns the GroupingReader interface for subjects
-func (dm *decisionMaker) Subjects() GroupingReader {
-	return dm.sg.(GroupingReader)
+func (dm *decisionMaker) Subjects() types.GroupingReader {
+	return dm.sg.(types.GroupingReader)
 }
 
 // ObjectJoin joins an article or a sub category to a category
-func (dm *decisionMaker) ObjectJoin(obj Object, cat Category) error {
+func (dm *decisionMaker) ObjectJoin(obj types.Object, cat types.Category) error {
 	if e := dm.og.Join(obj, cat); e != nil {
 		return e
 	}
 
 	switch obj.(type) {
-	case Article:
-		return dm.completeArticleByCategory(obj.(Article), cat)
+	case types.Article:
+		return dm.completeArticleByCategory(obj.(types.Article), cat)
 
-	case Category:
-		arts, e := dm.og.IndividualsIn(obj.(Category))
+	case types.Category:
+		arts, e := dm.og.IndividualsIn(obj.(types.Category))
 		if e != nil {
 			for art := range arts {
-				if e := dm.completeArticleByCategory(art.(Article), cat); e != nil {
+				if e := dm.completeArticleByCategory(art.(types.Article), cat); e != nil {
 					return e
 				}
 			}
 		}
 
 	default:
-		return ErrInvlaidObject
+		return types.ErrInvlaidObject
 	}
 
 	return nil
 }
 
 // ObjectLeave removes an article or a sub category from a category
-func (dm *decisionMaker) ObjectLeave(obj Object, cat Category) error {
+func (dm *decisionMaker) ObjectLeave(obj types.Object, cat types.Category) error {
 	if e := dm.og.Leave(obj, cat); e != nil {
 		return e
 	}
 
 	switch obj.(type) {
-	case Article:
-		return dm.rebuildArticle(obj.(Article))
+	case types.Article:
+		return dm.rebuildArticle(obj.(types.Article))
 
-	case Category:
-		arts, e := dm.og.IndividualsIn(obj.(Category))
+	case types.Category:
+		arts, e := dm.og.IndividualsIn(obj.(types.Category))
 		if e != nil {
 			return e
 		}
 		for art := range arts {
-			if e := dm.rebuildArticle(art.(Article)); e != nil {
+			if e := dm.rebuildArticle(art.(types.Article)); e != nil {
 				return e
 			}
 		}
 
 	default:
-		return ErrInvlaidObject
+		return types.ErrInvlaidObject
 	}
 
 	return nil
 }
 
 // RemoveArticle removes an article and all polices about it
-func (dm *decisionMaker) RemoveArticle(art Article) error {
+func (dm *decisionMaker) RemoveArticle(art types.Article) error {
 	if e := dm.og.RemoveIndividual(art); e != nil {
 		return e
 	}
@@ -179,7 +180,7 @@ func (dm *decisionMaker) RemoveArticle(art Article) error {
 }
 
 // RemoveCategory removes a category and all polices about it
-func (dm *decisionMaker) RemoveCategory(cat Category) error {
+func (dm *decisionMaker) RemoveCategory(cat types.Category) error {
 	arts, e := dm.og.IndividualsIn(cat)
 	if e != nil {
 		return e
@@ -190,7 +191,7 @@ func (dm *decisionMaker) RemoveCategory(cat Category) error {
 	}
 
 	for art := range arts {
-		if e := dm.rebuildArticle(art.(Article)); e != nil {
+		if e := dm.rebuildArticle(art.(types.Article)); e != nil {
 			return e
 		}
 	}
@@ -198,66 +199,66 @@ func (dm *decisionMaker) RemoveCategory(cat Category) error {
 	return nil
 }
 
-// Objects returns the GroupingReader interface for objects
-func (dm *decisionMaker) Objects() GroupingReader {
-	return dm.og.(GroupingReader)
+// Objects returns the types.GroupingReader interface for objects
+func (dm *decisionMaker) Objects() types.GroupingReader {
+	return dm.og.(types.GroupingReader)
 }
 
 // Permit subject to perform action on object
-func (dm *decisionMaker) Permit(sub Subject, obj Object, act Action) error {
+func (dm *decisionMaker) Permit(sub types.Subject, obj types.Object, act types.Action) error {
 	if e := dm.p.Permit(sub, obj, act); e != nil {
 		return e
 	}
 
-	users := make(map[Individual]struct{}, 1)
-	arts := make(map[Individual]struct{})
+	users := make(map[types.Individual]struct{}, 1)
+	arts := make(map[types.Individual]struct{})
 
 	switch sub.(type) {
-	case User:
-		users[sub.(User)] = struct{}{}
+	case types.User:
+		users[sub.(types.User)] = struct{}{}
 
-	case Role:
+	case types.Role:
 		if dm.sg == nil {
-			return ErrNoSubjectGrouping
+			return types.ErrNoSubjectGrouping
 		}
 
-		us, e := dm.sg.IndividualsIn(sub.(Role))
+		us, e := dm.sg.IndividualsIn(sub.(types.Role))
 		if e != nil {
 			return e
 		}
 		users = us
 
 	default:
-		return ErrInvlaidSubject
+		return types.ErrInvlaidSubject
 	}
 
 	switch obj.(type) {
-	case Article:
-		arts[obj.(Article)] = struct{}{}
+	case types.Article:
+		arts[obj.(types.Article)] = struct{}{}
 
-	case Category:
+	case types.Category:
 		if dm.og == nil {
-			return ErrNoObjectGrouping
+			return types.ErrNoObjectGrouping
 		}
 
-		as, e := dm.og.IndividualsIn(obj.(Category))
+		as, e := dm.og.IndividualsIn(obj.(types.Category))
 		if e != nil {
 			return e
 		}
 		arts = as
 
 	default:
-		return ErrInvlaidObject
+		return types.ErrInvlaidObject
 	}
 
 	for u := range users {
-		user := u.(User)
+		user := u.(types.User)
 		if dm.uap[user] == nil {
-			dm.uap[user] = make(map[Article]Action)
+			dm.uap[user] = make(map[types.Article]types.Action)
 		}
 
 		for a := range arts {
-			art := a.(Article)
+			art := a.(types.Article)
 			dm.uap[user][art] |= act
 		}
 	}
@@ -266,72 +267,72 @@ func (dm *decisionMaker) Permit(sub Subject, obj Object, act Action) error {
 }
 
 // Revoke permission for subject to perform action on object
-func (dm *decisionMaker) Revoke(sub Subject, obj Object, act Action) error {
+func (dm *decisionMaker) Revoke(sub types.Subject, obj types.Object, act types.Action) error {
 	if e := dm.p.Revoke(sub, obj, act); e != nil {
 		return e
 	}
 
-	removeByUser := func(user User) error {
+	removeByUser := func(user types.User) error {
 		if dm.uap[user] == nil {
 			return nil
 		}
 
 		switch obj.(type) {
-		case Article:
-			delete(dm.uap[user], obj.(Article))
+		case types.Article:
+			delete(dm.uap[user], obj.(types.Article))
 
-		case Category:
+		case types.Category:
 			if dm.og == nil {
-				return ErrNoObjectGrouping
+				return types.ErrNoObjectGrouping
 			}
 
-			arts, e := dm.og.IndividualsIn(obj.(Category))
+			arts, e := dm.og.IndividualsIn(obj.(types.Category))
 			if e != nil {
 				return e
 			}
 			for art := range arts {
-				delete(dm.uap[user], art.(Article))
+				delete(dm.uap[user], art.(types.Article))
 			}
 
 		default:
-			return ErrInvlaidObject
+			return types.ErrInvlaidObject
 		}
 
 		return nil
 	}
 
 	switch sub.(type) {
-	case User:
-		return removeByUser(sub.(User))
+	case types.User:
+		return removeByUser(sub.(types.User))
 
-	case Role:
+	case types.Role:
 		if dm.sg == nil {
-			return ErrNoSubjectGrouping
+			return types.ErrNoSubjectGrouping
 		}
 
-		users, e := dm.sg.IndividualsIn(sub.(Role))
+		users, e := dm.sg.IndividualsIn(sub.(types.Role))
 		if e != nil {
 			return e
 		}
 
 		for user := range users {
-			if e := removeByUser(user.(User)); e != nil {
+			if e := removeByUser(user.(types.User)); e != nil {
 				return e
 			}
 		}
 
 	default:
-		return ErrInvlaidObject
+		return types.ErrInvlaidObject
 	}
 
 	return nil
 }
 
 // Shall subject to perform action on object
-func (dm *decisionMaker) Shall(sub Subject, obj Object, act Action) (bool, error) {
+func (dm *decisionMaker) Shall(sub types.Subject, obj types.Object, act types.Action) (bool, error) {
 
-	if user, ok := sub.(User); ok {
-		if art, ok := obj.(Article); ok {
+	if user, ok := sub.(types.User); ok {
+		if art, ok := obj.(types.Article); ok {
 			if dm.uap[user] != nil {
 				return dm.uap[user][art].Includes(act), nil
 			}
@@ -343,23 +344,23 @@ func (dm *decisionMaker) Shall(sub Subject, obj Object, act Action) (bool, error
 }
 
 // PermissionsOn object for all subjects
-func (dm *decisionMaker) PermissionsOn(obj Object) (map[Subject]Action, error) {
+func (dm *decisionMaker) PermissionsOn(obj types.Object) (map[types.Subject]types.Action, error) {
 	return dm.p.PermissionsOn(obj)
 }
 
 // PermissionsFor subject on all objects
-func (dm *decisionMaker) PermissionsFor(sub Subject) (map[Object]Action, error) {
+func (dm *decisionMaker) PermissionsFor(sub types.Subject) (map[types.Object]types.Action, error) {
 	return dm.p.PermissionsFor(sub)
 }
 
 // PermittedActions for subject on object
-func (dm *decisionMaker) PermittedActions(sub Subject, obj Object) (Action, error) {
+func (dm *decisionMaker) PermittedActions(sub types.Subject, obj types.Object) (types.Action, error) {
 	return dm.p.PermittedActions(sub, obj)
 }
 
-func (dm *decisionMaker) rebuildUser(user User) error {
+func (dm *decisionMaker) rebuildUser(user types.User) error {
 	if dm.sg == nil {
-		return ErrNoSubjectGrouping
+		return types.ErrNoSubjectGrouping
 	}
 
 	roles, e := dm.sg.GroupsOf(user)
@@ -368,7 +369,7 @@ func (dm *decisionMaker) rebuildUser(user User) error {
 	}
 
 	for role := range roles {
-		if e := dm.completeUserByRole(user, role.(Role)); e != nil {
+		if e := dm.completeUserByRole(user, role.(types.Role)); e != nil {
 			return e
 		}
 	}
@@ -376,18 +377,18 @@ func (dm *decisionMaker) rebuildUser(user User) error {
 	return nil
 }
 
-func (dm *decisionMaker) completeUserByRole(user User, role Role) error {
+func (dm *decisionMaker) completeUserByRole(user types.User, role types.Role) error {
 	perms, e := dm.p.PermissionsFor(role)
 	if e != nil {
 		return e
 	}
 
 	if dm.uap[user] == nil {
-		dm.uap[user] = make(map[Article]Action, len(perms))
+		dm.uap[user] = make(map[types.Article]types.Action, len(perms))
 	}
 
 	for obj, act := range perms {
-		if art, ok := obj.(Article); ok {
+		if art, ok := obj.(types.Article); ok {
 			dm.uap[user][art] |= act
 		}
 	}
@@ -395,9 +396,9 @@ func (dm *decisionMaker) completeUserByRole(user User, role Role) error {
 	return nil
 }
 
-func (dm *decisionMaker) rebuildArticle(art Article) error {
+func (dm *decisionMaker) rebuildArticle(art types.Article) error {
 	if dm.og == nil {
-		return ErrNoObjectGrouping
+		return types.ErrNoObjectGrouping
 	}
 
 	cats, e := dm.og.GroupsOf(art)
@@ -406,7 +407,7 @@ func (dm *decisionMaker) rebuildArticle(art Article) error {
 	}
 
 	for cat := range cats {
-		if e := dm.completeArticleByCategory(art, cat.(Category)); e != nil {
+		if e := dm.completeArticleByCategory(art, cat.(types.Category)); e != nil {
 			return e
 		}
 	}
@@ -414,16 +415,16 @@ func (dm *decisionMaker) rebuildArticle(art Article) error {
 	return nil
 }
 
-func (dm *decisionMaker) completeArticleByCategory(art Article, cat Category) error {
+func (dm *decisionMaker) completeArticleByCategory(art types.Article, cat types.Category) error {
 	perms, e := dm.p.PermissionsOn(cat)
 	if e != nil {
 		return e
 	}
 
 	for sub, act := range perms {
-		if user, ok := sub.(User); ok {
+		if user, ok := sub.(types.User); ok {
 			if dm.uap[user] == nil {
-				dm.uap = make(map[User]map[Article]Action, 1)
+				dm.uap = make(map[types.User]map[types.Article]types.Action, 1)
 			}
 			dm.uap[user][art] |= act
 		}

@@ -3,41 +3,41 @@ package permission
 import (
 	"fmt"
 
-	. "github.com/houz42/rbac/types"
+	"github.com/houz42/rbac/types"
 )
 
-var _ Permission = (*thinPermission)(nil)
+var _ types.Permission = (*thinPermission)(nil)
 
 // thinPermission knows only direct subject-object-actions relationships
 type thinPermission struct {
-	bySubject map[Subject]map[Object]Action
-	byObject  map[Object]map[Subject]Action
+	bySubject map[types.Subject]map[types.Object]types.Action
+	byObject  map[types.Object]map[types.Subject]types.Action
 }
 
 func NewThinPermission() *thinPermission {
 	return &thinPermission{
-		bySubject: make(map[Subject]map[Object]Action),
-		byObject:  make(map[Object]map[Subject]Action),
+		bySubject: make(map[types.Subject]map[types.Object]types.Action),
+		byObject:  make(map[types.Object]map[types.Subject]types.Action),
 	}
 }
 
-func (p *thinPermission) Permit(sub Subject, obj Object, act Action) error {
+func (p *thinPermission) Permit(sub types.Subject, obj types.Object, act types.Action) error {
 	if _, ok := p.bySubject[sub]; !ok {
-		p.bySubject[sub] = make(map[Object]Action)
+		p.bySubject[sub] = make(map[types.Object]types.Action)
 	}
 	p.bySubject[sub][obj] |= act
 
 	if _, ok := p.byObject[obj]; !ok {
-		p.byObject[obj] = make(map[Subject]Action)
+		p.byObject[obj] = make(map[types.Subject]types.Action)
 	}
 	p.byObject[obj][sub] |= act
 
 	return nil
 }
 
-func (p *thinPermission) Revoke(sub Subject, obj Object, act Action) error {
+func (p *thinPermission) Revoke(sub types.Subject, obj types.Object, act types.Action) error {
 	if _, ok := p.bySubject[sub]; !ok {
-		return fmt.Errorf("%w: permission %s -[%s]-> %s", ErrNotFound, sub, obj, act)
+		return fmt.Errorf("%w: permission %s -[%s]-> %s", types.ErrNotFound, sub, obj, act)
 	}
 	p.bySubject[sub][obj] &= ^act
 	if p.bySubject[sub][obj] == 0 {
@@ -45,7 +45,7 @@ func (p *thinPermission) Revoke(sub Subject, obj Object, act Action) error {
 	}
 
 	if _, ok := p.byObject[obj]; !ok {
-		return fmt.Errorf("%w: permission %s -[%s]-> %s", ErrNotFound, sub, obj, act)
+		return fmt.Errorf("%w: permission %s -[%s]-> %s", types.ErrNotFound, sub, obj, act)
 	}
 	p.byObject[obj][sub] &= ^act
 	if p.byObject[obj][sub] == 0 {
@@ -55,7 +55,7 @@ func (p *thinPermission) Revoke(sub Subject, obj Object, act Action) error {
 	return nil
 }
 
-func (p *thinPermission) Shall(sub Subject, obj Object, act Action) (bool, error) {
+func (p *thinPermission) Shall(sub types.Subject, obj types.Object, act types.Action) (bool, error) {
 	if objs, ok := p.bySubject[sub]; ok {
 		if acts, ok := objs[obj]; ok {
 			return acts.Includes(act), nil
@@ -65,15 +65,15 @@ func (p *thinPermission) Shall(sub Subject, obj Object, act Action) (bool, error
 	return false, nil
 }
 
-func (p *thinPermission) PermissionsOn(obj Object) (map[Subject]Action, error) {
+func (p *thinPermission) PermissionsOn(obj types.Object) (map[types.Subject]types.Action, error) {
 	return p.byObject[obj], nil
 }
 
-func (p *thinPermission) PermissionsFor(sub Subject) (map[Object]Action, error) {
+func (p *thinPermission) PermissionsFor(sub types.Subject) (map[types.Object]types.Action, error) {
 	return p.bySubject[sub], nil
 }
 
-func (p *thinPermission) PermittedActions(sub Subject, obj Object) (Action, error) {
+func (p *thinPermission) PermittedActions(sub types.Subject, obj types.Object) (types.Action, error) {
 	if _, ok := p.bySubject[sub]; !ok {
 		return 0, nil
 	}

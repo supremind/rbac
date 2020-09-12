@@ -5,17 +5,17 @@ import (
 	"errors"
 	"fmt"
 
-	. "github.com/houz42/rbac/types"
+	"github.com/houz42/rbac/types"
 )
 
 type persistedGrouping struct {
-	persist GroupingPersister
-	Grouping
+	persist types.GroupingPersister
+	types.Grouping
 }
 
-// NewPersistedGrouping create a persisted Grouping based on given inner Grouping,
-// the inner Grouping must be synced
-func NewPersistedGrouping(ctx context.Context, inner Grouping, persist GroupingPersister) (*persistedGrouping, error) {
+// NewPersistedGrouping create a persisted types.Grouping based on given inner types.Grouping,
+// the inner types.Grouping must be synced
+func NewPersistedGrouping(ctx context.Context, inner types.Grouping, persist types.GroupingPersister) (*persistedGrouping, error) {
 	if inner == nil {
 		inner = NewFatGrouping()
 	}
@@ -66,44 +66,44 @@ func (g *persistedGrouping) startWatching(ctx context.Context) error {
 	return nil
 }
 
-func (g *persistedGrouping) coordinateChange(change GroupingPolicyChange) error {
+func (g *persistedGrouping) coordinateChange(change types.GroupingPolicyChange) error {
 	switch change.Method {
-	case PersistInsert:
+	case types.PersistInsert:
 		return g.Grouping.Join(change.Entity, change.Group)
-	case PersistDelete:
+	case types.PersistDelete:
 		if e := g.Grouping.Leave(change.Entity, change.Group); e != nil {
-			if errors.Is(e, ErrNotFound) {
+			if errors.Is(e, types.ErrNotFound) {
 				return nil
 			}
 			return nil
 		}
 	}
 
-	return fmt.Errorf("%w: grouping persister changes: %s", ErrUnsupportedChange, change.Method)
+	return fmt.Errorf("%w: grouping persister changes: %s", types.ErrUnsupportedChange, change.Method)
 }
 
-func (g *persistedGrouping) Join(ent Entity, group Group) error {
+func (g *persistedGrouping) Join(ent types.Entity, group types.Group) error {
 	if e := g.persist.Insert(ent, group); e != nil {
 		return e
 	}
 	return g.Grouping.Join(ent, group)
 }
 
-func (g *persistedGrouping) Leave(ent Entity, group Group) error {
+func (g *persistedGrouping) Leave(ent types.Entity, group types.Group) error {
 	if e := g.persist.Remove(ent, group); e != nil {
 		return e
 	}
 	return g.Grouping.Leave(ent, group)
 }
 
-func (g *persistedGrouping) RemoveGroup(group Group) error {
+func (g *persistedGrouping) RemoveGroup(group types.Group) error {
 	if e := g.persist.RemoveByGroup(group); e != nil {
 		return e
 	}
 	return g.Grouping.RemoveGroup(group)
 }
 
-func (g *persistedGrouping) RemoveIndividual(ind Individual) error {
+func (g *persistedGrouping) RemoveIndividual(ind types.Individual) error {
 	if e := g.persist.RemoveByIndividual(ind); e != nil {
 		return e
 	}

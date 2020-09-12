@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	. "github.com/houz42/rbac/types"
+	"github.com/houz42/rbac/types"
 )
 
 type persistedPermission struct {
-	persist PermissionPersister
-	Permission
+	persist types.PermissionPersister
+	types.Permission
 }
 
-func NewPersistedPermission(ctx context.Context, inner Permission, persist PermissionPersister) (*persistedPermission, error) {
+func NewPersistedPermission(ctx context.Context, inner types.Permission, persist types.PermissionPersister) (*persistedPermission, error) {
 	if inner == nil {
 		inner = NewThinPermission()
 	}
@@ -68,9 +68,9 @@ func (p *persistedPermission) startWatching(ctx context.Context) error {
 	return nil
 }
 
-func (p *persistedPermission) coordinateChange(change PermissionPolicyChange) error {
+func (p *persistedPermission) coordinateChange(change types.PermissionPolicyChange) error {
 	switch change.Method {
-	case PersistInsert, PersistUpdate:
+	case types.PersistInsert, types.PersistUpdate:
 		prev, e := p.Permission.PermittedActions(change.Subject, change.Object)
 		if e != nil {
 			return e
@@ -82,7 +82,7 @@ func (p *persistedPermission) coordinateChange(change PermissionPolicyChange) er
 			return p.Permission.Permit(change.Subject, change.Object, plus)
 		}
 
-	case PersistDelete:
+	case types.PersistDelete:
 		prev, e := p.Permission.PermittedActions(change.Subject, change.Object)
 		if e != nil {
 			return e
@@ -92,11 +92,11 @@ func (p *persistedPermission) coordinateChange(change PermissionPolicyChange) er
 		}
 	}
 
-	return fmt.Errorf("%w: permission persister changes: %s", ErrUnsupportedChange, change.Method)
+	return fmt.Errorf("%w: permission persister changes: %s", types.ErrUnsupportedChange, change.Method)
 }
 
 // Permit subject to perform action on object
-func (p *persistedPermission) Permit(sub Subject, obj Object, act Action) error {
+func (p *persistedPermission) Permit(sub types.Subject, obj types.Object, act types.Action) error {
 	before, e := p.Permission.PermittedActions(sub, obj)
 	if e != nil {
 		return e
@@ -111,7 +111,7 @@ func (p *persistedPermission) Permit(sub Subject, obj Object, act Action) error 
 }
 
 // Revoke permission for subject to perform action on object
-func (p *persistedPermission) Revoke(sub Subject, obj Object, act Action) error {
+func (p *persistedPermission) Revoke(sub types.Subject, obj types.Object, act types.Action) error {
 	before, e := p.Permission.PermittedActions(sub, obj)
 	if e != nil {
 		return e

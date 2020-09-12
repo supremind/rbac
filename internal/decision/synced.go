@@ -13,6 +13,7 @@ type syncedDecisionMaker struct {
 	dm DecisionMaker
 }
 
+// NewSyncedDecisionMaker makes the given DecisionMake safe in concurrent usages
 func NewSyncedDecisionMaker(dm DecisionMaker) *syncedDecisionMaker {
 	return &syncedDecisionMaker{dm: dm}
 }
