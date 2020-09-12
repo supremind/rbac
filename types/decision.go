@@ -1,5 +1,8 @@
 package types
 
+// DecisionMaker is the top level interface for end use
+// It decides if anyone can do anthing to some object, with knowledge of
+// user groupings, article groupings, and permission polices
 type DecisionMaker interface {
 	Subjector
 	Objector
