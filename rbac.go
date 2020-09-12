@@ -79,11 +79,12 @@ func WithPermissionPersister(p types.PermissionPersister) AuthorizerOption {
 	}
 }
 
+// AuthorizerConfig works together with AuthorizerOption to control the initialization of authorizer
 type AuthorizerConfig struct {
 	sp types.GroupingPersister
 	op types.GroupingPersister
 	pp types.PermissionPersister
 }
 
-// AuthorizerOption controls how to init a authorizer
+// AuthorizerOption controls how to init an authorizer
 type AuthorizerOption func(*AuthorizerConfig)
