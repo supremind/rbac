@@ -63,7 +63,7 @@ type PermissionPolicyChange struct {
 	Method PersistMethod
 }
 
-// PersistMethod defines what happend about the policies
+// PersistMethod defines what happened about the policies
 type PersistMethod string
 
 // possible changes could be happened about policies
