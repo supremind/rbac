@@ -20,20 +20,20 @@ func New(ctx context.Context, opts ...DecisionMakerOption) (types.DecisionMaker,
 	var sg, og types.Grouping
 	if cfg.sp != nil {
 		var e error
-		sg, e = grouping.NewPersistedGrouping(ctx, grouping.NewSyncedGrouping(grouping.NewFatGrouping()), cfg.sp)
+		sg, e = grouping.NewPersistedGrouping(ctx, nil, cfg.sp)
 		if e != nil {
 			return nil, fmt.Errorf("init subject grouping failed: %w", e)
 		}
 	}
 	if cfg.op != nil {
 		var e error
-		og, e = grouping.NewPersistedGrouping(ctx, grouping.NewSyncedGrouping(grouping.NewFatGrouping()), cfg.op)
+		og, e = grouping.NewPersistedGrouping(ctx, nil, cfg.op)
 		if e != nil {
 			return nil, fmt.Errorf("init object grouping failed: %w", e)
 		}
 	}
 
-	var p types.Permission = permission.NewSyncedPermission(permission.NewThinPermission())
+	var p types.Permission = permission.NewSyncedPermission(nil)
 	if cfg.pp != nil {
 		var e error
 		p, e = permission.NewPersistedPermission(ctx, p, cfg.pp)

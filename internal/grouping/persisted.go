@@ -16,6 +16,10 @@ type persistedGrouping struct {
 // NewPersistedGrouping create a persisted Grouping based on given inner Grouping,
 // the inner Grouping must be synced
 func NewPersistedGrouping(ctx context.Context, inner Grouping, persist GroupingPersister) (*persistedGrouping, error) {
+	if inner == nil {
+		inner = NewFatGrouping()
+	}
+	inner = NewSyncedGrouping(inner)
 	g := &persistedGrouping{persist: persist, Grouping: inner}
 	if e := g.loadPersisted(); e != nil {
 		return nil, e

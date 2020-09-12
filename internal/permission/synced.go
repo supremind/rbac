@@ -14,6 +14,9 @@ type syncedPermission struct {
 }
 
 func NewSyncedPermission(p Permission) *syncedPermission {
+	if p == nil {
+		p = NewThinPermission()
+	}
 	return &syncedPermission{p: p}
 }
 

@@ -15,6 +15,9 @@ type syncedGrouping struct {
 }
 
 func NewSyncedGrouping(g Grouping) *syncedGrouping {
+	if g == nil {
+		g = NewFatGrouping()
+	}
 	return &syncedGrouping{
 		g: g,
 	}

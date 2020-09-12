@@ -13,6 +13,10 @@ type persistedPermission struct {
 }
 
 func NewPersistedPermission(ctx context.Context, inner Permission, persist PermissionPersister) (*persistedPermission, error) {
+	if inner == nil {
+		inner = NewThinPermission()
+	}
+	inner = NewSyncedPermission(inner)
 	p := &persistedPermission{
 		persist:    persist,
 		Permission: inner,

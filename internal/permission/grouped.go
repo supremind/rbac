@@ -13,6 +13,9 @@ type subjectGroupedPermission struct {
 }
 
 func NewSubjectGroupedPermission(sg Grouping, p Permission) *subjectGroupedPermission {
+	if p == nil {
+		p = NewThinPermission()
+	}
 	return &subjectGroupedPermission{
 		sg:         sg,
 		Permission: p,
@@ -108,6 +111,9 @@ type objectGroupedPermission struct {
 }
 
 func NewObjectGroupedPermission(og Grouping, p Permission) *objectGroupedPermission {
+	if p == nil {
+		p = NewThinPermission()
+	}
 	return &objectGroupedPermission{
 		og:         og,
 		Permission: p,
@@ -209,6 +215,9 @@ type bothGroupedPermission struct {
 }
 
 func NewBothGroupedPermission(sg, og Grouping, p Permission) *bothGroupedPermission {
+	if p == nil {
+		p = NewThinPermission()
+	}
 	return &bothGroupedPermission{
 		sg:         sg,
 		og:         og,
