@@ -1,7 +1,7 @@
 package types
 
-// Grouping defines individual-group relationships,
-// an individual could belong to any number of groups,
+// Grouping defines member-group relationships,
+// an member could belong to any number of groups,
 // and a group could contain any individuals or other groups.
 type Grouping interface {
 	GroupingWriter
@@ -10,17 +10,17 @@ type Grouping interface {
 
 // GroupingReader defines read methods used for grouping polices
 type GroupingReader interface {
-	// IsIn returns true if Individual is a member of Group or members of Group
-	IsIn(Individual, Group) (bool, error)
+	// IsIn returns true if Member is a member of Group or members of Group
+	IsIn(Member, Group) (bool, error)
 
 	// AllGroups returns all Group have ever seen
 	AllGroups() (map[Group]struct{}, error)
 
 	// AllIndividuals returns all Individuals have ever seen
-	AllIndividuals() (map[Individual]struct{}, error)
+	AllIndividuals() (map[Member]struct{}, error)
 
 	// IndividualsIn returns all individuals belongs to Group or sub Groups of Group
-	IndividualsIn(Group) (map[Individual]struct{}, error)
+	IndividualsIn(Group) (map[Member]struct{}, error)
 
 	// GroupsOf returns all groups the Entity or its Groups belongs to
 	GroupsOf(Entity) (map[Group]struct{}, error)
@@ -43,8 +43,8 @@ type GroupingWriter interface {
 	// RemoveGroup removes a Group, and all relationships about it
 	RemoveGroup(Group) error
 
-	// RemoveIndividual removes an Individual, and all relationships about it
-	RemoveIndividual(Individual) error
+	// RemoveIndividual removes an Member, and all relationships about it
+	RemoveIndividual(Member) error
 }
 
 // Entity is anything could be grouped together, or be a group of other entities
@@ -56,20 +56,20 @@ type Group interface {
 	group() string
 }
 
-// Individual is an entity could be grouped together
-type Individual interface {
+// Member is an entity could be grouped together
+type Member interface {
 	Entity
-	individual() string
+	member() string
 }
 
-// User is an Individual belongs to some Roles, and a Subject in Permissions
+// User is an Member belongs to some Roles, and a Subject in Permissions
 type User string
 
 func (u User) String() string {
 	return "user:" + string(u)
 }
 
-func (u User) individual() string {
+func (u User) member() string {
 	return u.String()
 }
 
@@ -84,14 +84,14 @@ func (r Role) group() string {
 	return r.String()
 }
 
-// Article is an Individual belongs to some Categories, and an Object in Permissions
+// Article is an Member belongs to some Categories, and an Object in Permissions
 type Article string
 
 func (a Article) String() string {
 	return "art:" + string(a)
 }
 
-func (a Article) individual() string {
+func (a Article) member() string {
 	return a.String()
 }
 

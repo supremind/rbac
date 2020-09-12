@@ -38,10 +38,10 @@ func (g *syncedGrouping) Leave(ent types.Entity, group types.Group) error {
 }
 
 //  IsIn implements Grouping interface
-func (g *syncedGrouping) IsIn(individual types.Individual, group types.Group) (bool, error) {
+func (g *syncedGrouping) IsIn(member types.Member, group types.Group) (bool, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.IsIn(individual, group)
+	return g.g.IsIn(member, group)
 }
 
 //  AllGroups implements Grouping interface
@@ -52,7 +52,7 @@ func (g *syncedGrouping) AllGroups() (map[types.Group]struct{}, error) {
 }
 
 // AllIndividuals implements Grouping interface
-func (g *syncedGrouping) AllIndividuals() (map[types.Individual]struct{}, error) {
+func (g *syncedGrouping) AllIndividuals() (map[types.Member]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
 	return g.g.AllIndividuals()
@@ -66,7 +66,7 @@ func (g *syncedGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, e
 }
 
 // IndividualsIn implements Grouping interface
-func (g *syncedGrouping) IndividualsIn(group types.Group) (map[types.Individual]struct{}, error) {
+func (g *syncedGrouping) IndividualsIn(group types.Group) (map[types.Member]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
 	return g.g.IndividualsIn(group)
@@ -94,8 +94,8 @@ func (g *syncedGrouping) RemoveGroup(group types.Group) error {
 }
 
 // RemoveIndividual implements Grouping interface
-func (g *syncedGrouping) RemoveIndividual(individual types.Individual) error {
+func (g *syncedGrouping) RemoveIndividual(member types.Member) error {
 	g.Lock()
 	defer g.Unlock()
-	return g.g.RemoveIndividual(individual)
+	return g.g.RemoveIndividual(member)
 }

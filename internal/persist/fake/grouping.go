@@ -88,18 +88,18 @@ func (p *groupingPersister) RemoveByGroup(group types.Group) error {
 	return nil
 }
 
-func (p *groupingPersister) RemoveByIndividual(ind types.Individual) error {
-	groups := p.policies[ind]
+func (p *groupingPersister) RemoveByIndividual(m types.Member) error {
+	groups := p.policies[m]
 	if len(groups) == 0 {
 		return nil
 	}
 
 	removes := make([]types.GroupingPolicy, 0, len(groups))
 	for group := range groups {
-		removes = append(removes, types.GroupingPolicy{Entity: ind, Group: group})
+		removes = append(removes, types.GroupingPolicy{Entity: m, Group: group})
 	}
 
-	delete(p.policies, ind)
+	delete(p.policies, m)
 	for _, remove := range removes {
 		p.changes <- types.GroupingPolicyChange{GroupingPolicy: remove, Method: types.PersistDelete}
 	}

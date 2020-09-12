@@ -2,7 +2,7 @@ package types
 
 import "context"
 
-// GroupingPersister persists individual-group relationship polices to an external storage
+// GroupingPersister persists member-group relationship polices to an external storage
 type GroupingPersister interface {
 	// Insert inserts a policy to the persister
 	Insert(Entity, Group) error
@@ -13,8 +13,8 @@ type GroupingPersister interface {
 	// RemoveByGroup removes all policies about the group from the persister
 	RemoveByGroup(Group) error
 
-	// RemoveByIndividual removes all policies about the individual from the persister
-	RemoveByIndividual(Individual) error
+	// RemoveByIndividual removes all policies about the member from the persister
+	RemoveByIndividual(Member) error
 
 	// List all policies from the persister
 	List() ([]GroupingPolicy, error)

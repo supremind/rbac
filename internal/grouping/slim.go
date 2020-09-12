@@ -61,8 +61,8 @@ func (g *slimGrouping) Leave(entity types.Entity, grp types.Group) error {
 }
 
 // IsIn implements Grouping interface
-func (g *slimGrouping) IsIn(ind types.Individual, grp types.Group) (bool, error) {
-	groups, err := g.GroupsOf(ind)
+func (g *slimGrouping) IsIn(m types.Member, grp types.Group) (bool, error) {
+	groups, err := g.GroupsOf(m)
 	if err != nil {
 		return false, err
 	}
@@ -81,11 +81,11 @@ func (g *slimGrouping) AllGroups() (map[types.Group]struct{}, error) {
 }
 
 // AllIndividuals implements Grouping interface
-func (g *slimGrouping) AllIndividuals() (map[types.Individual]struct{}, error) {
-	invs := make(map[types.Individual]struct{}, len(g.parents))
+func (g *slimGrouping) AllIndividuals() (map[types.Member]struct{}, error) {
+	invs := make(map[types.Member]struct{}, len(g.parents))
 	for entity := range g.parents {
-		if ind, ok := entity.(types.Individual); ok {
-			invs[ind] = struct{}{}
+		if m, ok := entity.(types.Member); ok {
+			invs[m] = struct{}{}
 		}
 	}
 	return invs, nil
@@ -111,8 +111,8 @@ func (g *slimGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, err
 }
 
 // IndividualsIn implements Grouping interface
-func (g *slimGrouping) IndividualsIn(grp types.Group) (map[types.Individual]struct{}, error) {
-	children := make(map[types.Individual]struct{})
+func (g *slimGrouping) IndividualsIn(grp types.Group) (map[types.Member]struct{}, error) {
+	children := make(map[types.Member]struct{})
 
 	var query func(grp types.Group, depth int)
 	query = func(grp types.Group, depth int) {
@@ -120,8 +120,8 @@ func (g *slimGrouping) IndividualsIn(grp types.Group) (map[types.Individual]stru
 			return
 		}
 		for ch := range g.children[grp] {
-			if ind, ok := ch.(types.Individual); ok {
-				children[ind] = struct{}{}
+			if m, ok := ch.(types.Member); ok {
+				children[m] = struct{}{}
 			} else {
 				query(ch.(types.Group), depth+1)
 			}
@@ -161,12 +161,12 @@ func (g *slimGrouping) RemoveGroup(grp types.Group) error {
 }
 
 // RemoveIndividual implements Grouping interface
-func (g *slimGrouping) RemoveIndividual(ind types.Individual) error {
-	parents := g.parents[ind]
-	delete(g.parents, ind)
+func (g *slimGrouping) RemoveIndividual(m types.Member) error {
+	parents := g.parents[m]
+	delete(g.parents, m)
 
 	for p := range parents {
-		delete(g.children[p], ind)
+		delete(g.children[p], m)
 	}
 	return nil
 }

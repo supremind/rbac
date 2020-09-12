@@ -39,8 +39,8 @@ func (dm *decisionMaker) SubjectJoin(sub types.Subject, role types.Role) error {
 		if e != nil {
 			return e
 		}
-		for ind := range users {
-			if e := dm.completeUserByRole(ind.(types.User), role); e != nil {
+		for m := range users {
+			if e := dm.completeUserByRole(m.(types.User), role); e != nil {
 				return e
 			}
 		}
@@ -210,8 +210,8 @@ func (dm *decisionMaker) Permit(sub types.Subject, obj types.Object, act types.A
 		return e
 	}
 
-	users := make(map[types.Individual]struct{}, 1)
-	arts := make(map[types.Individual]struct{})
+	users := make(map[types.Member]struct{}, 1)
+	arts := make(map[types.Member]struct{})
 
 	switch sub.(type) {
 	case types.User:

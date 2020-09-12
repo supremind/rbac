@@ -14,9 +14,9 @@ type fatGrouping struct {
 	// entity => all groups it belongs to
 	groups map[types.Entity]map[types.Group]struct{}
 	// group => all individuals belongs to it
-	individuals map[types.Group]map[types.Individual]struct{}
+	individuals map[types.Group]map[types.Member]struct{}
 
-	allIndividuals map[types.Individual]struct{}
+	allIndividuals map[types.Member]struct{}
 	allGroups      map[types.Group]struct{}
 }
 
@@ -25,8 +25,8 @@ func NewFatGrouping() *fatGrouping {
 	return &fatGrouping{
 		slim:           *NewSlimGrouping(),
 		groups:         make(map[types.Entity]map[types.Group]struct{}),
-		individuals:    make(map[types.Group]map[types.Individual]struct{}),
-		allIndividuals: make(map[types.Individual]struct{}),
+		individuals:    make(map[types.Group]map[types.Member]struct{}),
+		allIndividuals: make(map[types.Member]struct{}),
 		allGroups:      make(map[types.Group]struct{}),
 	}
 }
@@ -37,8 +37,8 @@ func (g *fatGrouping) Join(ent types.Entity, group types.Group) error {
 	}
 
 	g.allGroups[group] = struct{}{}
-	if individual, ok := ent.(types.Individual); ok {
-		g.allIndividuals[individual] = struct{}{}
+	if member, ok := ent.(types.Member); ok {
+		g.allIndividuals[member] = struct{}{}
 	}
 
 	if g.groups[ent] == nil {
@@ -50,10 +50,10 @@ func (g *fatGrouping) Join(ent types.Entity, group types.Group) error {
 	}
 
 	if g.individuals[group] == nil {
-		g.individuals[group] = make(map[types.Individual]struct{})
+		g.individuals[group] = make(map[types.Member]struct{})
 	}
-	if individual, ok := ent.(types.Individual); ok {
-		g.individuals[group][individual] = struct{}{}
+	if member, ok := ent.(types.Member); ok {
+		g.individuals[group][member] = struct{}{}
 	} else {
 		for u := range g.individuals[ent.(types.Group)] {
 			g.individuals[group][u] = struct{}{}
@@ -77,9 +77,9 @@ func (g *fatGrouping) Leave(ent types.Entity, group types.Group) error {
 	return nil
 }
 
-func (g *fatGrouping) IsIn(individual types.Individual, group types.Group) (bool, error) {
+func (g *fatGrouping) IsIn(member types.Member, group types.Group) (bool, error) {
 	if individuals, ok := g.individuals[group]; ok {
-		_, ok := individuals[individual]
+		_, ok := individuals[member]
 		return ok, nil
 	}
 	return false, nil
@@ -89,7 +89,7 @@ func (g *fatGrouping) AllGroups() (map[types.Group]struct{}, error) {
 	return g.allGroups, nil
 }
 
-func (g *fatGrouping) AllIndividuals() (map[types.Individual]struct{}, error) {
+func (g *fatGrouping) AllIndividuals() (map[types.Member]struct{}, error) {
 	return g.allIndividuals, nil
 }
 
@@ -97,7 +97,7 @@ func (g *fatGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, erro
 	return g.groups[ent], nil
 }
 
-func (g *fatGrouping) IndividualsIn(group types.Group) (map[types.Individual]struct{}, error) {
+func (g *fatGrouping) IndividualsIn(group types.Group) (map[types.Member]struct{}, error) {
 	return g.individuals[group], nil
 }
 
@@ -141,16 +141,16 @@ func (g *fatGrouping) RemoveGroup(group types.Group) error {
 	return nil
 }
 
-func (g *fatGrouping) RemoveIndividual(individual types.Individual) error {
-	delete(g.allIndividuals, individual)
-	delete(g.groups, individual)
+func (g *fatGrouping) RemoveIndividual(member types.Member) error {
+	delete(g.allIndividuals, member)
+	delete(g.groups, member)
 
-	groups, e := g.ImmediateGroupsOf(individual)
+	groups, e := g.ImmediateGroupsOf(member)
 	if e != nil {
 		return e
 	}
 
-	if e := g.slim.RemoveIndividual(individual); e != nil {
+	if e := g.slim.RemoveIndividual(member); e != nil {
 		return e
 	}
 
@@ -201,13 +201,13 @@ func (g *fatGrouping) rebuildIndividuals(group types.Group) error {
 		return e
 	}
 
-	g.individuals[group] = make(map[types.Individual]struct{}, len(subs))
+	g.individuals[group] = make(map[types.Member]struct{}, len(subs))
 	for ent := range subs {
-		if individual, ok := ent.(types.Individual); ok {
-			g.individuals[group][individual] = struct{}{}
+		if member, ok := ent.(types.Member); ok {
+			g.individuals[group][member] = struct{}{}
 		} else {
-			for individual := range g.individuals[ent.(types.Group)] {
-				g.individuals[group][individual] = struct{}{}
+			for member := range g.individuals[ent.(types.Group)] {
+				g.individuals[group][member] = struct{}{}
 			}
 		}
 	}
