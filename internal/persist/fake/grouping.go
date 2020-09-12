@@ -89,7 +89,7 @@ func (p *groupingPersister) RemoveByGroup(group types.Group) error {
 	return nil
 }
 
-func (p *groupingPersister) RemoveByIndividual(m types.Member) error {
+func (p *groupingPersister) RemoveByMember(m types.Member) error {
 	groups := p.policies[m]
 	if len(groups) == 0 {
 		return nil

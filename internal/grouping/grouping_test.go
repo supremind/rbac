@@ -68,7 +68,7 @@ var _ = Describe("grouping implementation", func() {
 			})
 
 			It("should contain initial users", func() {
-				Expect(g.AllIndividuals()).To(haveExactKeys(
+				Expect(g.AllMembers()).To(haveExactKeys(
 					User("0"), User("1"), User("2"), User("3"), User("4"),
 					User("5"), User("6"), User("7"), User("8"), User("9"),
 				))
@@ -99,7 +99,7 @@ var _ = Describe("grouping implementation", func() {
 			Context("querying users of role", func() {
 				for role, users := range RoleUsers {
 					It(fmt.Sprintf("should know users of %s", role), func() {
-						Expect(g.IndividualsIn(role)).To(haveExactKeys(func() []interface{} {
+						Expect(g.MembersIn(role)).To(haveExactKeys(func() []interface{} {
 							is := make([]interface{}, 0, len(users))
 							for _, user := range users {
 								is = append(is, user)
@@ -141,7 +141,7 @@ var _ = Describe("grouping implementation", func() {
 				func(user User, role Role) {
 					Expect(g.Leave(user, role)).To(Succeed())
 					Expect(g.GroupsOf(user)).NotTo(HaveKey(role), fmt.Sprintf("%s should not be in roles of %s", role, user))
-					Expect(g.IndividualsIn(role)).NotTo(HaveKey(user), fmt.Sprintf("%s should not be in users of %s", user, role))
+					Expect(g.MembersIn(role)).NotTo(HaveKey(user), fmt.Sprintf("%s should not be in users of %s", user, role))
 					Expect(g.IsIn(user, role)).NotTo(BeTrue(), fmt.Sprintf("%s should not be in %s", user, role))
 				},
 				Entry("user 1 leaves role 3_1", User("1"), Role("3_1")),
@@ -179,16 +179,16 @@ var _ = Describe("grouping implementation", func() {
 
 			Describe("removing user", func() {
 				BeforeEach(func() {
-					Expect(g.RemoveIndividual(User("2"))).To(Succeed())
+					Expect(g.RemoveMember(User("2"))).To(Succeed())
 				})
 
 				It("should remove it from all users", func() {
-					Expect(g.AllIndividuals()).NotTo(HaveKey(User("2")))
+					Expect(g.AllMembers()).NotTo(HaveKey(User("2")))
 				})
 
 				DescribeTable("should remove it from users of its roles",
 					func(role Role) {
-						Expect(g.IndividualsIn(role)).NotTo(HaveKey(User("2")))
+						Expect(g.MembersIn(role)).NotTo(HaveKey(User("2")))
 					},
 					Entry("role 2_0", Role("2_0")),
 					Entry("role 3_2", Role("3_2")),
@@ -230,7 +230,7 @@ var _ = Describe("grouping implementation", func() {
 
 				DescribeTable("querying users of super role",
 					func(role Role, users []interface{}) {
-						Expect(g.IndividualsIn(role)).To(haveExactKeys(users...))
+						Expect(g.MembersIn(role)).To(haveExactKeys(users...))
 					},
 					Entry("even numbers", Role("even"), []interface{}{User("0"), User("2"), User("4"), User("6"), User("8")}),
 					Entry("divisible numbers", Role("divisible"),

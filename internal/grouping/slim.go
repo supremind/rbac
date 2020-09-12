@@ -80,8 +80,8 @@ func (g *slimGrouping) AllGroups() (map[types.Group]struct{}, error) {
 	return groups, nil
 }
 
-// AllIndividuals implements Grouping interface
-func (g *slimGrouping) AllIndividuals() (map[types.Member]struct{}, error) {
+// AllMembers implements Grouping interface
+func (g *slimGrouping) AllMembers() (map[types.Member]struct{}, error) {
 	invs := make(map[types.Member]struct{}, len(g.parents))
 	for entity := range g.parents {
 		if m, ok := entity.(types.Member); ok {
@@ -110,8 +110,8 @@ func (g *slimGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, err
 	return ancients, nil
 }
 
-// IndividualsIn implements Grouping interface
-func (g *slimGrouping) IndividualsIn(grp types.Group) (map[types.Member]struct{}, error) {
+// MembersIn implements Grouping interface
+func (g *slimGrouping) MembersIn(grp types.Group) (map[types.Member]struct{}, error) {
 	children := make(map[types.Member]struct{})
 
 	var query func(grp types.Group, depth int)
@@ -160,8 +160,8 @@ func (g *slimGrouping) RemoveGroup(grp types.Group) error {
 	return nil
 }
 
-// RemoveIndividual implements Grouping interface
-func (g *slimGrouping) RemoveIndividual(m types.Member) error {
+// RemoveMember implements Grouping interface
+func (g *slimGrouping) RemoveMember(m types.Member) error {
 	parents := g.parents[m]
 	delete(g.parents, m)
 

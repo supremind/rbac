@@ -102,9 +102,9 @@ func (g *persistedGrouping) RemoveGroup(group types.Group) error {
 	return g.Grouping.RemoveGroup(group)
 }
 
-func (g *persistedGrouping) RemoveIndividual(m types.Member) error {
-	if e := g.persist.RemoveByIndividual(m); e != nil {
+func (g *persistedGrouping) RemoveMember(m types.Member) error {
+	if e := g.persist.RemoveByMember(m); e != nil {
 		return e
 	}
-	return g.Grouping.RemoveIndividual(m)
+	return g.Grouping.RemoveMember(m)
 }

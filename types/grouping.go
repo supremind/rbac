@@ -2,7 +2,7 @@ package types
 
 // Grouping defines member-group relationships,
 // an member could belong to any number of groups,
-// and a group could contain any individuals or other groups.
+// and a group could contain any members or other groups.
 type Grouping interface {
 	GroupingWriter
 	GroupingReader
@@ -16,11 +16,11 @@ type GroupingReader interface {
 	// AllGroups returns all Group have ever seen
 	AllGroups() (map[Group]struct{}, error)
 
-	// AllIndividuals returns all Individuals have ever seen
-	AllIndividuals() (map[Member]struct{}, error)
+	// AllMembers returns all members have ever seen
+	AllMembers() (map[Member]struct{}, error)
 
-	// IndividualsIn returns all individuals belongs to Group or sub Groups of Group
-	IndividualsIn(Group) (map[Member]struct{}, error)
+	// MembersIn returns all members belongs to Group or sub Groups of Group
+	MembersIn(Group) (map[Member]struct{}, error)
 
 	// GroupsOf returns all groups the Entity or its Groups belongs to
 	GroupsOf(Entity) (map[Group]struct{}, error)
@@ -43,8 +43,8 @@ type GroupingWriter interface {
 	// RemoveGroup removes a Group, and all relationships about it
 	RemoveGroup(Group) error
 
-	// RemoveIndividual removes an Member, and all relationships about it
-	RemoveIndividual(Member) error
+	// RemoveMember removes an Member, and all relationships about it
+	RemoveMember(Member) error
 }
 
 // Entity is anything could be grouped together, or be a group of other entities

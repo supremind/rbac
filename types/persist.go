@@ -13,8 +13,8 @@ type GroupingPersister interface {
 	// RemoveByGroup removes all policies about the group from the persister
 	RemoveByGroup(Group) error
 
-	// RemoveByIndividual removes all policies about the member from the persister
-	RemoveByIndividual(Member) error
+	// RemoveByMember removes all policies about the member from the persister
+	RemoveByMember(Member) error
 
 	// List all policies from the persister
 	List() ([]GroupingPolicy, error)

@@ -51,11 +51,11 @@ func (g *syncedGrouping) AllGroups() (map[types.Group]struct{}, error) {
 	return g.g.AllGroups()
 }
 
-// AllIndividuals implements Grouping interface
-func (g *syncedGrouping) AllIndividuals() (map[types.Member]struct{}, error) {
+// AllMembers implements Grouping interface
+func (g *syncedGrouping) AllMembers() (map[types.Member]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.AllIndividuals()
+	return g.g.AllMembers()
 }
 
 // GroupsOf implements Grouping interface
@@ -65,11 +65,11 @@ func (g *syncedGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, e
 	return g.g.GroupsOf(ent)
 }
 
-// IndividualsIn implements Grouping interface
-func (g *syncedGrouping) IndividualsIn(group types.Group) (map[types.Member]struct{}, error) {
+// MembersIn implements Grouping interface
+func (g *syncedGrouping) MembersIn(group types.Group) (map[types.Member]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.IndividualsIn(group)
+	return g.g.MembersIn(group)
 }
 
 //  ImmediateGroupsOf implements Grouping interface
@@ -93,9 +93,9 @@ func (g *syncedGrouping) RemoveGroup(group types.Group) error {
 	return g.g.RemoveGroup(group)
 }
 
-// RemoveIndividual implements Grouping interface
-func (g *syncedGrouping) RemoveIndividual(member types.Member) error {
+// RemoveMember implements Grouping interface
+func (g *syncedGrouping) RemoveMember(member types.Member) error {
 	g.Lock()
 	defer g.Unlock()
-	return g.g.RemoveIndividual(member)
+	return g.g.RemoveMember(member)
 }

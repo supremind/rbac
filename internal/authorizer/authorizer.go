@@ -35,7 +35,7 @@ func (authz *authorizer) SubjectJoin(sub types.Subject, role types.Role) error {
 		return authz.completeUserByRole(sub.(types.User), role)
 
 	case types.Role:
-		users, e := authz.sg.IndividualsIn(sub.(types.Role))
+		users, e := authz.sg.MembersIn(sub.(types.Role))
 		if e != nil {
 			return e
 		}
@@ -63,7 +63,7 @@ func (authz *authorizer) SubjectLeave(sub types.Subject, role types.Role) error 
 		return authz.rebuildUser(sub.(types.User))
 
 	case types.Role:
-		users, e := authz.sg.IndividualsIn(sub.(types.Role))
+		users, e := authz.sg.MembersIn(sub.(types.Role))
 		if e != nil {
 			return e
 		}
@@ -83,12 +83,12 @@ func (authz *authorizer) SubjectLeave(sub types.Subject, role types.Role) error 
 // RemoveUser removes a user and all policies about it
 func (authz *authorizer) RemoveUser(user types.User) error {
 	delete(authz.uap, user)
-	return authz.sg.RemoveIndividual(user)
+	return authz.sg.RemoveMember(user)
 }
 
 // RemoveRole removes a role and all policies about it
 func (authz *authorizer) RemoveRole(role types.Role) error {
-	users, e := authz.sg.IndividualsIn(role)
+	users, e := authz.sg.MembersIn(role)
 	if e != nil {
 		return e
 	}
@@ -122,7 +122,7 @@ func (authz *authorizer) ObjectJoin(obj types.Object, cat types.Category) error 
 		return authz.completeArticleByCategory(obj.(types.Article), cat)
 
 	case types.Category:
-		arts, e := authz.og.IndividualsIn(obj.(types.Category))
+		arts, e := authz.og.MembersIn(obj.(types.Category))
 		if e != nil {
 			for art := range arts {
 				if e := authz.completeArticleByCategory(art.(types.Article), cat); e != nil {
@@ -149,7 +149,7 @@ func (authz *authorizer) ObjectLeave(obj types.Object, cat types.Category) error
 		return authz.rebuildArticle(obj.(types.Article))
 
 	case types.Category:
-		arts, e := authz.og.IndividualsIn(obj.(types.Category))
+		arts, e := authz.og.MembersIn(obj.(types.Category))
 		if e != nil {
 			return e
 		}
@@ -168,7 +168,7 @@ func (authz *authorizer) ObjectLeave(obj types.Object, cat types.Category) error
 
 // RemoveArticle removes an article and all polices about it
 func (authz *authorizer) RemoveArticle(art types.Article) error {
-	if e := authz.og.RemoveIndividual(art); e != nil {
+	if e := authz.og.RemoveMember(art); e != nil {
 		return e
 	}
 
@@ -181,7 +181,7 @@ func (authz *authorizer) RemoveArticle(art types.Article) error {
 
 // RemoveCategory removes a category and all polices about it
 func (authz *authorizer) RemoveCategory(cat types.Category) error {
-	arts, e := authz.og.IndividualsIn(cat)
+	arts, e := authz.og.MembersIn(cat)
 	if e != nil {
 		return e
 	}
@@ -222,7 +222,7 @@ func (authz *authorizer) Permit(sub types.Subject, obj types.Object, act types.A
 			return types.ErrNoSubjectGrouping
 		}
 
-		us, e := authz.sg.IndividualsIn(sub.(types.Role))
+		us, e := authz.sg.MembersIn(sub.(types.Role))
 		if e != nil {
 			return e
 		}
@@ -241,7 +241,7 @@ func (authz *authorizer) Permit(sub types.Subject, obj types.Object, act types.A
 			return types.ErrNoObjectGrouping
 		}
 
-		as, e := authz.og.IndividualsIn(obj.(types.Category))
+		as, e := authz.og.MembersIn(obj.(types.Category))
 		if e != nil {
 			return e
 		}
@@ -286,7 +286,7 @@ func (authz *authorizer) Revoke(sub types.Subject, obj types.Object, act types.A
 				return types.ErrNoObjectGrouping
 			}
 
-			arts, e := authz.og.IndividualsIn(obj.(types.Category))
+			arts, e := authz.og.MembersIn(obj.(types.Category))
 			if e != nil {
 				return e
 			}
@@ -310,7 +310,7 @@ func (authz *authorizer) Revoke(sub types.Subject, obj types.Object, act types.A
 			return types.ErrNoSubjectGrouping
 		}
 
-		users, e := authz.sg.IndividualsIn(sub.(types.Role))
+		users, e := authz.sg.MembersIn(sub.(types.Role))
 		if e != nil {
 			return e
 		}
