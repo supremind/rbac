@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/houz42/rbac/internal/decision"
+	"github.com/houz42/rbac/internal/authorizer"
 	"github.com/houz42/rbac/internal/grouping"
 	"github.com/houz42/rbac/internal/permission"
 	"github.com/houz42/rbac/types"
 )
 
-// New creates a RBAC DecisionMaker
-func New(ctx context.Context, opts ...DecisionMakerOption) (types.DecisionMaker, error) {
-	cfg := &decisionMakerConfig{}
+// New creates a RBAC Authorizer
+func New(ctx context.Context, opts ...AuthorizerOption) (types.Authorizer, error) {
+	cfg := &AuthorizerConfig{}
 	for _, opt := range opts {
 		opt(cfg)
 	}
@@ -42,48 +42,48 @@ func New(ctx context.Context, opts ...DecisionMakerOption) (types.DecisionMaker,
 		}
 	}
 	if sg != nil && og != nil {
-		p = decision.NewBothGroupedPermission(sg, og, p)
+		p = authorizer.NewBothGroupedPermission(sg, og, p)
 	}
 	if sg != nil && og == nil {
-		p = decision.NewSubjectGroupedPermission(sg, p)
+		p = authorizer.NewSubjectGroupedPermission(sg, p)
 	}
 	if sg == nil && og != nil {
-		p = decision.NewObjectGroupedPermission(og, p)
+		p = authorizer.NewObjectGroupedPermission(og, p)
 	}
 
-	dm := decision.NewSyncedDecisionMaker(decision.NewDecisionMaker(sg, og, p))
-	return dm, nil
+	authz := authorizer.NewSyncedAuthorizer(authorizer.NewAuthorizer(sg, og, p))
+	return authz, nil
 }
 
 // WithSubjectPersister sets Persister for subject
 // could be omitted if subject grouping is not used: no roles, only users
-func WithSubjectPersister(p types.GroupingPersister) DecisionMakerOption {
-	return func(cfg *decisionMakerConfig) {
+func WithSubjectPersister(p types.GroupingPersister) AuthorizerOption {
+	return func(cfg *AuthorizerConfig) {
 		cfg.sp = p
 	}
 }
 
 // WithObjectPersister sets Persister for object
 // could be omitted if object grouping is not used: no rules on categories
-func WithObjectPersister(p types.GroupingPersister) DecisionMakerOption {
-	return func(cfg *decisionMakerConfig) {
+func WithObjectPersister(p types.GroupingPersister) AuthorizerOption {
+	return func(cfg *AuthorizerConfig) {
 		cfg.op = p
 	}
 }
 
 // WithPermissionPersister sets Persister for Permission manager
 // all permission polices will be lost after restart if not set
-func WithPermissionPersister(p types.PermissionPersister) DecisionMakerOption {
-	return func(cfg *decisionMakerConfig) {
+func WithPermissionPersister(p types.PermissionPersister) AuthorizerOption {
+	return func(cfg *AuthorizerConfig) {
 		cfg.pp = p
 	}
 }
 
-type decisionMakerConfig struct {
+type AuthorizerConfig struct {
 	sp types.GroupingPersister
 	op types.GroupingPersister
 	pp types.PermissionPersister
 }
 
-// DecisionMakerOption controls how to init a decision maker
-type DecisionMakerOption func(*decisionMakerConfig)
+// AuthorizerOption controls how to init a authorizer
+type AuthorizerOption func(*AuthorizerConfig)

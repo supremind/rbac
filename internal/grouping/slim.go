@@ -16,7 +16,7 @@ type slimGrouping struct {
 	maxDepth int
 }
 
-// NewSlimGrouping creates a slimGrouping, which is a simplest implementation of Grouping interface
+// NewSlimGrouping creates a slimGrouping, which is a simplest implementation of Grouping interface.
 // it is not intended to be used directly
 func NewSlimGrouping() *slimGrouping {
 	return &slimGrouping{

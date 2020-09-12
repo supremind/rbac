@@ -13,7 +13,7 @@ type syncedPermission struct {
 	sync.RWMutex
 }
 
-// NewSyncedPermission makes the given Permission safe in concurrent usages
+// NewSyncedPermission makes the given permission be safe in concurrent usages
 func NewSyncedPermission(p types.Permission) *syncedPermission {
 	if p == nil {
 		p = NewThinPermission()

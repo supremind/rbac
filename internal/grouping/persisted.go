@@ -13,8 +13,7 @@ type persistedGrouping struct {
 	types.Grouping
 }
 
-// NewPersistedGrouping create a persisted types.Grouping based on given inner types.Grouping,
-// the inner types.Grouping must be synced
+// NewPersistedGrouping creates a persisted Grouping based on given inner Grouping, and makes sure it is synced
 func NewPersistedGrouping(ctx context.Context, inner types.Grouping, persist types.GroupingPersister) (*persistedGrouping, error) {
 	if inner == nil {
 		inner = NewFatGrouping()

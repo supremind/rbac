@@ -11,6 +11,7 @@ type groupingPersister struct {
 	changes  chan types.GroupingPolicyChange
 }
 
+// NewGroupingPersister returns a fake grouping persister which should not be used in real works
 func NewGroupingPersister(ctx context.Context, initPolices ...types.GroupingPolicy) *groupingPersister {
 	gp := &groupingPersister{
 		policies: make(map[types.Entity]map[types.Group]struct{}),

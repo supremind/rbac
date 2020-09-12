@@ -1,4 +1,4 @@
-package decision
+package authorizer
 
 import (
 	"github.com/houz42/rbac/internal/permission"
@@ -13,6 +13,7 @@ type subjectGroupedPermission struct {
 	types.Permission
 }
 
+// NewSubjectGroupedPermission makes the permission know user-role relationships and make decisions with them
 func NewSubjectGroupedPermission(sg types.Grouping, p types.Permission) *subjectGroupedPermission {
 	if p == nil {
 		p = permission.NewThinPermission()
@@ -111,6 +112,7 @@ type objectGroupedPermission struct {
 	types.Permission
 }
 
+// NewObjectGroupedPermission makes the permission knows article-category relationships and make decions with them
 func NewObjectGroupedPermission(og types.Grouping, p types.Permission) *objectGroupedPermission {
 	if p == nil {
 		p = permission.NewThinPermission()
@@ -215,6 +217,8 @@ type bothGroupedPermission struct {
 	types.Permission
 }
 
+// NewBothGroupedPermission make the permission know the relationships between users ans roles,
+// as well as articles and categories, and make decisions with them
 func NewBothGroupedPermission(sg, og types.Grouping, p types.Permission) *bothGroupedPermission {
 	if p == nil {
 		p = permission.NewThinPermission()
@@ -290,22 +294,23 @@ func (p *bothGroupedPermission) PermittedActions(sub types.Subject, obj types.Ob
 		return allowed, nil
 	}
 
-	if perm, e := p.sp.PermittedActions(sub, obj); e != nil {
+	perm, e := p.sp.PermittedActions(sub, obj)
+	if e != nil {
 		return 0, e
-	} else {
-		allowed |= perm
-		if allowed == types.AllActions {
-			return allowed, nil
-		}
 	}
 
-	if perm, e := p.op.PermittedActions(sub, obj); e != nil {
+	allowed |= perm
+	if allowed == types.AllActions {
+		return allowed, nil
+	}
+
+	perm, e = p.op.PermittedActions(sub, obj)
+	if e != nil {
 		return 0, e
-	} else {
-		allowed |= perm
-		if allowed == types.AllActions {
-			return allowed, nil
-		}
+	}
+	allowed |= perm
+	if allowed == types.AllActions {
+		return allowed, nil
 	}
 
 	roles, e := p.sg.GroupsOf(sub)

@@ -2,6 +2,7 @@ package types
 
 import "errors"
 
+// exported errors
 var (
 	ErrNotFound          = errors.New("not found")
 	ErrInvlaidSubject    = errors.New("invalid subject, it should be a User or Role")

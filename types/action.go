@@ -3,7 +3,8 @@ package types
 import "strings"
 
 // Action can be done on objects by subjects
-// Actions are power of twos to achieve efficient set operations, like union, intersection, complemention
+// Actions are power of twos to achieve efficient set operations, like union, intersection, complement.
+// An action is also a union of actions
 type Action uint32
 
 // preset actions, users can reset these and define others
@@ -27,6 +28,7 @@ var actionNames = map[Action]string{
 	Exec:  "exec",
 }
 
+// ResetActions cleans preset actions, and register custom ones
 func ResetActions(names ...string) []Action {
 	actionNames = make(map[Action]string)
 	actions := make([]Action, 0, len(names))
@@ -42,14 +44,17 @@ func ResetActions(names ...string) []Action {
 	return actions
 }
 
+// IsIn tells if all actions in a are members of b: a is subset of b
 func (a Action) IsIn(b Action) bool {
 	return a|b == b
 }
 
+// Includes tells if all actions in b are members of a: a is superset of b
 func (a Action) Includes(b Action) bool {
 	return b.IsIn(a)
 }
 
+// Difference returns set of actions belong to a but not b: complement of b in a
 func (a Action) Difference(b Action) Action {
 	return a &^ b
 }

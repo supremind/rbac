@@ -1,15 +1,15 @@
 package types
 
-// DecisionMaker is the top level interface for end use
+// Authorizer is the top level interface for end use
 // It decides if anyone can do anthing to some object, with knowledge of
 // user groupings, article groupings, and permission polices
-type DecisionMaker interface {
+type Authorizer interface {
 	Subjector
 	Objector
 	Permission
 }
 
-// Subjector manages subjects and groupings of subjects
+// Subjector manages subjects and groups of subjects, roles
 type Subjector interface {
 	// SubjectJoin joins a user or a sub role to a role
 	SubjectJoin(sub Subject, role Role) error
@@ -23,7 +23,7 @@ type Subjector interface {
 	Subjects() GroupingReader
 }
 
-// Objector manages objects and groupings of objects
+// Objector manages objects and groups of objects, categories
 type Objector interface {
 	// ObjectJoin joins an article or a sub category to a category
 	ObjectJoin(obj Object, cat Category) error

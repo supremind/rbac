@@ -12,6 +12,7 @@ type persistedPermission struct {
 	types.Permission
 }
 
+// NewPersistedPermission persists the permission polices with given persister, and makes sure it is synced
 func NewPersistedPermission(ctx context.Context, inner types.Permission, persist types.PermissionPersister) (*persistedPermission, error) {
 	if inner == nil {
 		inner = NewThinPermission()

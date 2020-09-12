@@ -14,6 +14,7 @@ type thinPermission struct {
 	byObject  map[types.Object]map[types.Subject]types.Action
 }
 
+// NewThinPermission returns a simplest permission which should not be used directly
 func NewThinPermission() *thinPermission {
 	return &thinPermission{
 		bySubject: make(map[types.Subject]map[types.Object]types.Action),

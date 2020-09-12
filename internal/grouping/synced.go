@@ -14,7 +14,7 @@ type syncedGrouping struct {
 	sync.RWMutex
 }
 
-// NewSyncedGrouping makes the given Grouping safe in concurrent usages
+// NewSyncedGrouping makes the given Grouping be safe in concurrent usages
 func NewSyncedGrouping(g types.Grouping) *syncedGrouping {
 	if g == nil {
 		g = NewFatGrouping()

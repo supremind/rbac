@@ -20,7 +20,7 @@ type fatGrouping struct {
 	allGroups      map[types.Group]struct{}
 }
 
-// NewFatGrouping creates a new grouping with more cache
+// NewFatGrouping creates a new grouping faster than slimGrouping, but still should not be used in production
 func NewFatGrouping() *fatGrouping {
 	return &fatGrouping{
 		slim:           *NewSlimGrouping(),
