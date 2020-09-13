@@ -64,7 +64,7 @@ var _ = Describe("base permitter implementation", func() {
 		{
 			name: "persisted",
 			p: func() Permission {
-				p, e := NewPersistedPermission(context.Background(), NewSyncedPermission(NewThinPermission()), NewPermissionPersister(context.Background()))
+				p, e := NewPersistedPermission(context.Background(), nil, NewPermissionPersister(context.Background()))
 				Expect(e).To(Succeed())
 				return p
 			}(),

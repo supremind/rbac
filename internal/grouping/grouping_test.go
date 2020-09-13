@@ -46,9 +46,9 @@ var _ = Describe("grouping implementation", func() {
 			g:    NewSyncedGrouping(NewSlimGrouping()),
 		},
 		{
-			name: "persisted",
+			name: "fake persisted",
 			g: func() Grouping {
-				g, e := NewPersistedGrouping(context.Background(), NewSyncedGrouping(NewFatGrouping()), NewGroupingPersister(context.Background()))
+				g, e := NewPersistedGrouping(context.Background(), nil, NewGroupingPersister(context.Background()))
 				Expect(e).To(Succeed())
 				return g
 			}(),

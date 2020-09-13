@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/houz42/rbac/types"
+	"github.com/houz42/rbac/internal/persist/filter"
 )
 
 type persistedPermission struct {
@@ -18,6 +19,8 @@ func NewPersistedPermission(ctx context.Context, inner types.Permission, persist
 		inner = NewThinPermission()
 	}
 	inner = NewSyncedPermission(inner)
+
+	persist= filter.NewPermissionPersisterFilter(persist)
 	p := &persistedPermission{
 		persist:    persist,
 		Permission: inner,
