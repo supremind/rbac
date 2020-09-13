@@ -1,6 +1,9 @@
 package types
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // Action can be done on objects by subjects
 // Actions are power of twos to achieve efficient set operations, like union, intersection, complement.
@@ -28,15 +31,23 @@ var actionNames = map[Action]string{
 	Exec:  "exec",
 }
 
+var actionValues = map[string]Action{
+	"read":  Read,
+	"write": Write,
+	"exec":  Exec,
+}
+
 // ResetActions cleans preset actions, and register custom ones
 func ResetActions(names ...string) []Action {
-	actionNames = make(map[Action]string)
+	actionNames = make(map[Action]string, len(names))
+	actionValues = make(map[string]Action, len(names))
 	actions := make([]Action, 0, len(names))
 	AllActions = 0
 
 	for i, name := range names {
 		a := Action(1 << i)
 		actionNames[a] = name
+		actionValues[name] = a
 		actions = append(actions, a)
 		AllActions |= a
 	}
@@ -78,9 +89,22 @@ func (a Action) String() string {
 	for _, a := range as {
 		n, ok := actionNames[a]
 		if !ok {
-			n = "unknown"
+			n = fmt.Sprintf("unknown(%d)", a)
 		}
 		ns = append(ns, n)
 	}
 	return strings.Join(ns, "|")
+}
+
+// ParseAction parses action from string
+func ParseAction(name string) (Action, error) {
+	var as Action
+	for _, name := range strings.Split(name, "|") {
+		a := actionValues[name]
+		if a == 0 {
+			return 0, fmt.Errorf("%w: %s", ErrUnknownAction, name)
+		}
+		as |= a
+	}
+	return as, nil
 }

@@ -8,7 +8,7 @@ type Grouping interface {
 	GroupingReader
 }
 
-// GroupingReader defines read methods used for grouping polices
+// GroupingReader defines methods to get grouping assignment polices
 type GroupingReader interface {
 	// IsIn returns true if Member is a member of Group or members of Group
 	IsIn(Member, Group) (bool, error)
@@ -32,7 +32,7 @@ type GroupingReader interface {
 	ImmediateGroupsOf(Entity) (map[Group]struct{}, error)
 }
 
-// GroupingWriter defines write methods used for grouping polices
+// GroupingWriter defines methods to create, update, or remove grouping assignment polices
 type GroupingWriter interface {
 	// Join an Entity to a Group, the Entity will "immediately" belongs to the Group
 	Join(Entity, Group) error
@@ -50,58 +50,16 @@ type GroupingWriter interface {
 // Entity is anything could be grouped together, or be a group of other entities
 type Entity interface{}
 
-// Group is an collection of entities
+// Group is an collection of entities, like Role in user-role, or Category in article-cagetory relationships
+// Group is not expecting custom implementations
 type Group interface {
 	Entity
 	group() string
 }
 
-// Member is an entity could be grouped together
+// Member is an entity could be grouped together, like User in user-role, or Article in article-cagetory relationships
+// Member is not expecting custom implementations
 type Member interface {
 	Entity
 	member() string
-}
-
-// User is an Member belongs to some Roles, and a Subject in Permissions
-type User string
-
-func (u User) String() string {
-	return "user:" + string(u)
-}
-
-func (u User) member() string {
-	return u.String()
-}
-
-// Role is a Group of Users, and a Subject in Permissions
-type Role string
-
-func (r Role) String() string {
-	return "role:" + string(r)
-}
-
-func (r Role) group() string {
-	return r.String()
-}
-
-// Article is an Member belongs to some Categories, and an Object in Permissions
-type Article string
-
-func (a Article) String() string {
-	return "art:" + string(a)
-}
-
-func (a Article) member() string {
-	return a.String()
-}
-
-// Category is a Group of Articles, and an Object in Permissions
-type Category string
-
-func (c Category) String() string {
-	return "cat:" + string(c)
-}
-
-func (c Category) group() string {
-	return c.String()
 }

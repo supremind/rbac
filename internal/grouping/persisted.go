@@ -92,7 +92,14 @@ func (g *persistedGrouping) Leave(ent types.Entity, group types.Group) error {
 	if e := g.persist.Remove(ent, group); e != nil {
 		return e
 	}
-	return g.Grouping.Leave(ent, group)
+
+	e := g.Grouping.Leave(ent, group)
+	if e != nil {
+		if errors.Is(e, types.ErrNotFound) {
+			return nil
+		}
+	}
+	return e
 }
 
 func (g *persistedGrouping) RemoveGroup(group types.Group) error {
