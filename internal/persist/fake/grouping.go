@@ -74,39 +74,6 @@ func (p *groupingPersister) Remove(ent types.Entity, group types.Group) error {
 	return nil
 }
 
-func (p *groupingPersister) RemoveByGroup(group types.Group) error {
-	removes := make([]types.GroupingPolicy, 0)
-
-	for ent, groups := range p.policies {
-		for group := range groups {
-			removes = append(removes, types.GroupingPolicy{Entity: ent, Group: group})
-		}
-	}
-
-	for _, remove := range removes {
-		p.Remove(remove.Entity, remove.Group)
-	}
-	return nil
-}
-
-func (p *groupingPersister) RemoveByMember(m types.Member) error {
-	groups := p.policies[m]
-	if len(groups) == 0 {
-		return nil
-	}
-
-	removes := make([]types.GroupingPolicy, 0, len(groups))
-	for group := range groups {
-		removes = append(removes, types.GroupingPolicy{Entity: m, Group: group})
-	}
-
-	delete(p.policies, m)
-	for _, remove := range removes {
-		p.changes <- types.GroupingPolicyChange{GroupingPolicy: remove, Method: types.PersistDelete}
-	}
-	return nil
-}
-
 func (p *groupingPersister) List() ([]types.GroupingPolicy, error) {
 	polices := make([]types.GroupingPolicy, 0, len(p.policies))
 	for ent, groups := range p.policies {

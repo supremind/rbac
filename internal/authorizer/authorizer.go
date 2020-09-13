@@ -16,6 +16,14 @@ type authorizer struct {
 
 // NewAuthorizer creates a simple authorizer, which should not be used directly
 func NewAuthorizer(sg types.Grouping, og types.Grouping, p types.Permission) *authorizer {
+	if sg != nil && og != nil {
+		p = NewBothGroupedPermission(sg, og, p)
+	} else if sg != nil && og == nil {
+		p = NewSubjectGroupedPermission(sg, p)
+	} else if sg == nil && og != nil {
+		p = NewObjectGroupedPermission(og, p)
+	}
+
 	return &authorizer{
 		sg:  sg,
 		og:  og,
@@ -82,12 +90,33 @@ func (authz *authorizer) SubjectLeave(sub types.Subject, role types.Role) error 
 
 // RemoveUser removes a user and all policies about it
 func (authz *authorizer) RemoveUser(user types.User) error {
+	sgp, ok := authz.p.(subjectGroupedPermissioner)
+	if !ok {
+		return types.ErrNoSubjectGrouping
+	}
+
 	delete(authz.uap, user)
+
+	perms, e := sgp.directPermissionsFor(user)
+	if e != nil {
+		return e
+	}
+	for obj, act := range perms {
+		if e := sgp.Revoke(user, obj, act); e != nil {
+			return e
+		}
+	}
+
 	return authz.sg.RemoveMember(user)
 }
 
 // RemoveRole removes a role and all policies about it
 func (authz *authorizer) RemoveRole(role types.Role) error {
+	sgp, ok := authz.p.(subjectGroupedPermissioner)
+	if !ok {
+		return types.ErrNoSubjectGrouping
+	}
+
 	users, e := authz.sg.MembersIn(role)
 	if e != nil {
 		return e
@@ -99,6 +128,16 @@ func (authz *authorizer) RemoveRole(role types.Role) error {
 
 	for user := range users {
 		if e := authz.rebuildUser(user.(types.User)); e != nil {
+			return e
+		}
+	}
+
+	perms, e := sgp.directPermissionsFor(role)
+	if e != nil {
+		return e
+	}
+	for obj, act := range perms {
+		if e := sgp.Revoke(role, obj, act); e != nil {
 			return e
 		}
 	}
@@ -168,6 +207,11 @@ func (authz *authorizer) ObjectLeave(obj types.Object, cat types.Category) error
 
 // RemoveArticle removes an article and all polices about it
 func (authz *authorizer) RemoveArticle(art types.Article) error {
+	ogp, ok := authz.p.(objectGroupedPermissioner)
+	if !ok {
+		return types.ErrNoObjectGrouping
+	}
+
 	if e := authz.og.RemoveMember(art); e != nil {
 		return e
 	}
@@ -176,11 +220,26 @@ func (authz *authorizer) RemoveArticle(art types.Article) error {
 		delete(perms, art)
 	}
 
+	perms, e := ogp.directPermissionsOn(art)
+	if e != nil {
+		return e
+	}
+	for sub, act := range perms {
+		if e := ogp.Revoke(sub, art, act); e != nil {
+			return e
+		}
+	}
+
 	return nil
 }
 
 // RemoveCategory removes a category and all polices about it
 func (authz *authorizer) RemoveCategory(cat types.Category) error {
+	ogp, ok := authz.p.(objectGroupedPermissioner)
+	if !ok {
+		return types.ErrNoObjectGrouping
+	}
+
 	arts, e := authz.og.MembersIn(cat)
 	if e != nil {
 		return e
@@ -192,6 +251,16 @@ func (authz *authorizer) RemoveCategory(cat types.Category) error {
 
 	for art := range arts {
 		if e := authz.rebuildArticle(art.(types.Article)); e != nil {
+			return e
+		}
+	}
+
+	perms, e := ogp.directPermissionsOn(cat)
+	if e != nil {
+		return e
+	}
+	for sub, act := range perms {
+		if e := ogp.Revoke(sub, cat, act); e != nil {
 			return e
 		}
 	}

@@ -41,15 +41,6 @@ func New(ctx context.Context, opts ...AuthorizerOption) (types.Authorizer, error
 			return nil, fmt.Errorf("init permission failed: %w", e)
 		}
 	}
-	if sg != nil && og != nil {
-		p = authorizer.NewBothGroupedPermission(sg, og, p)
-	}
-	if sg != nil && og == nil {
-		p = authorizer.NewSubjectGroupedPermission(sg, p)
-	}
-	if sg == nil && og != nil {
-		p = authorizer.NewObjectGroupedPermission(og, p)
-	}
 
 	authz := authorizer.NewSyncedAuthorizer(authorizer.NewAuthorizer(sg, og, p))
 	return authz, nil
