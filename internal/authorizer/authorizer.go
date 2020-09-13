@@ -16,6 +16,14 @@ type authorizer struct {
 
 // NewAuthorizer creates a simple authorizer, which should not be used directly
 func NewAuthorizer(sg types.Grouping, og types.Grouping, p types.Permission) *authorizer {
+	if sg != nil && og != nil {
+		p = NewBothGroupedPermission(sg, og, p)
+	} else if sg != nil && og == nil {
+		p = NewSubjectGroupedPermission(sg, p)
+	} else if sg == nil && og != nil {
+		p = NewObjectGroupedPermission(og, p)
+	}
+
 	return &authorizer{
 		sg:  sg,
 		og:  og,
