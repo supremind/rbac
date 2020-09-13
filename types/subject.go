@@ -1,8 +1,11 @@
 package types
 
+import "strings"
+
 // Subject is a User or a Role to perform actions on Objects
 // Subject is not expecting custom implementations
 type Subject interface {
+	Entity
 	subject() string
 }
 
@@ -34,4 +37,16 @@ func (r Role) group() string {
 
 func (r Role) subject() string {
 	return r.String()
+}
+
+// ParseSubject parses an serialized Subject
+func ParseSubject(s string) (Subject, error) {
+	switch {
+	case strings.HasPrefix(s, "user:"):
+		return User(strings.TrimPrefix(s, "user:")), nil
+	case strings.HasPrefix(s, "role:"):
+		return Role(strings.TrimPrefix(s, "role:")), nil
+	}
+
+	return nil, ErrInvalidEntity
 }

@@ -1,5 +1,7 @@
 package types
 
+import "strings"
+
 // Grouping defines member-group relationships,
 // an member could belong to any number of groups,
 // and a group could contain any members or other groups.
@@ -48,7 +50,10 @@ type GroupingWriter interface {
 }
 
 // Entity is anything could be grouped together, or be a group of other entities
-type Entity interface{}
+type Entity interface {
+	// String method is used to be serialized when persisting
+	String() string
+}
 
 // Group is an collection of entities, like Role in user-role, or Category in article-cagetory relationships
 // Group is not expecting custom implementations
@@ -62,4 +67,44 @@ type Group interface {
 type Member interface {
 	Entity
 	member() string
+}
+
+// ParseEntity parses an serialized Entity
+func ParseEntity(s string) (Entity, error) {
+	switch {
+	case strings.HasPrefix(s, "user:"):
+		return User(strings.TrimPrefix(s, "user:")), nil
+	case strings.HasPrefix(s, "role:"):
+		return Role(strings.TrimPrefix(s, "role:")), nil
+	case strings.HasPrefix(s, "art:"):
+		return Article(strings.TrimPrefix(s, "art:")), nil
+	case strings.HasPrefix(s, "cat:"):
+		return Category(strings.TrimPrefix(s, "cat:")), nil
+	}
+
+	return nil, ErrInvalidEntity
+}
+
+// ParseGroup parse a serialized Group
+func ParseGroup(s string) (Group, error) {
+	switch {
+	case strings.HasPrefix(s, "role:"):
+		return Role(strings.TrimPrefix(s, "role:")), nil
+	case strings.HasPrefix(s, "cat:"):
+		return Category(strings.TrimPrefix(s, "cat:")), nil
+	}
+
+	return nil, ErrInvalidEntity
+}
+
+// ParseMember parses a serialized Member
+func ParseMember(s string) (Member, error) {
+	switch {
+	case strings.HasPrefix(s, "user:"):
+		return User(strings.TrimPrefix(s, "user:")), nil
+	case strings.HasPrefix(s, "art:"):
+		return Article(strings.TrimPrefix(s, "art:")), nil
+	}
+
+	return nil, ErrInvalidMember
 }
