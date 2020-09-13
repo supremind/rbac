@@ -5,8 +5,24 @@ import (
 	"github.com/houz42/rbac/types"
 )
 
-var _ types.Permission = (*subjectGroupedPermission)(nil)
-var _ types.Permission = (*objectGroupedPermission)(nil)
+var _ subjectGroupedPermissioner = (*subjectGroupedPermission)(nil)
+var _ objectGroupedPermissioner = (*objectGroupedPermission)(nil)
+var _ bothGroupedPermissioner = (*bothGroupedPermission)(nil)
+
+type subjectGroupedPermissioner interface {
+	types.Permission
+	directPermissionsFor(types.Subject) (map[types.Object]types.Action, error)
+}
+
+type objectGroupedPermissioner interface {
+	types.Permission
+	directPermissionsOn(types.Object) (map[types.Subject]types.Action, error)
+}
+
+type bothGroupedPermissioner interface {
+	subjectGroupedPermissioner
+	objectGroupedPermissioner
+}
 
 type subjectGroupedPermission struct {
 	sg types.Grouping
@@ -105,6 +121,10 @@ func (p *subjectGroupedPermission) PermittedActions(sub types.Subject, obj types
 	}
 
 	return allowed, nil
+}
+
+func (p *subjectGroupedPermission) directPermissionsFor(sub types.Subject) (map[types.Object]types.Action, error) {
+	return p.Permission.PermissionsFor(sub)
 }
 
 type objectGroupedPermission struct {
@@ -207,6 +227,10 @@ func (p *objectGroupedPermission) PermittedActions(sub types.Subject, obj types.
 	}
 
 	return allowed, nil
+}
+
+func (p *objectGroupedPermission) directPermissionsOn(obj types.Object) (map[types.Subject]types.Action, error) {
+	return p.Permission.PermissionsOn(obj)
 }
 
 type bothGroupedPermission struct {
@@ -338,4 +362,12 @@ func (p *bothGroupedPermission) PermittedActions(sub types.Subject, obj types.Ob
 	}
 
 	return allowed, nil
+}
+
+func (p *bothGroupedPermission) directPermissionsFor(sub types.Subject) (map[types.Object]types.Action, error) {
+	return p.Permission.PermissionsFor(sub)
+}
+
+func (p *bothGroupedPermission) directPermissionsOn(obj types.Object) (map[types.Subject]types.Action, error) {
+	return p.Permission.PermissionsOn(obj)
 }
