@@ -10,12 +10,6 @@ type GroupingPersister interface {
 	// Remove a policy from the persister
 	Remove(Entity, Group) error
 
-	// RemoveByGroup removes all policies about the group from the persister
-	RemoveByGroup(Group) error
-
-	// RemoveByMember removes all policies about the member from the persister
-	RemoveByMember(Member) error
-
 	// List all policies from the persister
 	List() ([]GroupingPolicy, error)
 

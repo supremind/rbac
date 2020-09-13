@@ -103,15 +103,39 @@ func (g *persistedGrouping) Leave(ent types.Entity, group types.Group) error {
 }
 
 func (g *persistedGrouping) RemoveGroup(group types.Group) error {
-	if e := g.persist.RemoveByGroup(group); e != nil {
+	members, e := g.Grouping.ImmediateEntitiesIn(group)
+	if e != nil {
 		return e
 	}
-	return g.Grouping.RemoveGroup(group)
+	for member := range members {
+		if e := g.Leave(member, group); e != nil {
+			return e
+		}
+	}
+
+	groups, e := g.Grouping.ImmediateGroupsOf(group)
+	if e != nil {
+		return e
+	}
+	for super := range groups {
+		if e := g.Leave(group, super); e != nil {
+			return e
+		}
+	}
+
+	return nil
 }
 
 func (g *persistedGrouping) RemoveMember(m types.Member) error {
-	if e := g.persist.RemoveByMember(m); e != nil {
+	groups, e := g.Grouping.ImmediateGroupsOf(m)
+	if e != nil {
 		return e
 	}
-	return g.Grouping.RemoveMember(m)
+	for group := range groups {
+		if e := g.Leave(m, group); e != nil {
+			return e
+		}
+	}
+
+	return nil
 }
