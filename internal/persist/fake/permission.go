@@ -12,17 +12,10 @@ type permissionPersister struct {
 }
 
 // NewPermissionPersister returns a fake permission persister which should not be used in real works
-func NewPermissionPersister(ctx context.Context, initPolices ...types.PermissionPolicy) *permissionPersister {
+func NewPermissionPersister(ctx context.Context) *permissionPersister {
 	pp := &permissionPersister{
 		polices: make(map[types.Subject]map[types.Object]types.Action),
 		changes: make(chan types.PermissionPolicyChange),
-	}
-
-	for _, policy := range initPolices {
-		if pp.polices[policy.Subject] == nil {
-			pp.polices[policy.Subject] = make(map[types.Object]types.Action)
-		}
-		pp.polices[policy.Subject][policy.Object] |= policy.Action
 	}
 
 	go func() {
@@ -33,7 +26,7 @@ func NewPermissionPersister(ctx context.Context, initPolices ...types.Permission
 	return pp
 }
 
-func (p *permissionPersister) Upsert(sub types.Subject, obj types.Object, act types.Action) error {
+func (p *permissionPersister) Insert(sub types.Subject, obj types.Object, act types.Action) error {
 	if p.polices[sub] != nil {
 		if p.polices[sub][obj] == act {
 			return nil
@@ -50,6 +43,27 @@ func (p *permissionPersister) Upsert(sub types.Subject, obj types.Object, act ty
 			Action:  act,
 		},
 		Method: types.PersistInsert,
+	}
+	return nil
+}
+
+func (p *permissionPersister) Update(sub types.Subject, obj types.Object, act types.Action) error {
+	if p.polices[sub] != nil {
+		if p.polices[sub][obj] == act {
+			return nil
+		}
+	} else {
+		p.polices[sub] = make(map[types.Object]types.Action)
+	}
+
+	p.polices[sub][obj] = act
+	p.changes <- types.PermissionPolicyChange{
+		PermissionPolicy: types.PermissionPolicy{
+			Subject: sub,
+			Object:  obj,
+			Action:  act,
+		},
+		Method: types.PersistUpdate,
 	}
 	return nil
 }

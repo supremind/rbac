@@ -19,8 +19,11 @@ type GroupingPersister interface {
 
 // PermissionPersister persists subject-object-action permission polices to an external storage
 type PermissionPersister interface {
-	// Upsert insert or update a permission policy to the persister
-	Upsert(Subject, Object, Action) error
+	// Insert a permission policy to the persister
+	Insert(Subject, Object, Action) error
+
+	// Update a permission policy to the persister
+	Update(Subject, Object, Action) error
 
 	// Remove a permission policy from the persister
 	Remove(Subject, Object) error

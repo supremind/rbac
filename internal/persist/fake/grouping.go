@@ -12,17 +12,10 @@ type groupingPersister struct {
 }
 
 // NewGroupingPersister returns a fake grouping persister which should not be used in real works
-func NewGroupingPersister(ctx context.Context, initPolices ...types.GroupingPolicy) *groupingPersister {
+func NewGroupingPersister(ctx context.Context) *groupingPersister {
 	gp := &groupingPersister{
 		policies: make(map[types.Entity]map[types.Group]struct{}),
 		changes:  make(chan types.GroupingPolicyChange),
-	}
-
-	for _, policy := range initPolices {
-		if gp.policies[policy.Entity] == nil {
-			gp.policies[policy.Entity] = make(map[types.Group]struct{})
-		}
-		gp.policies[policy.Entity][policy.Group] = struct{}{}
 	}
 
 	go func() {
@@ -87,4 +80,8 @@ func (p *groupingPersister) List() ([]types.GroupingPolicy, error) {
 
 func (p *groupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPolicyChange, error) {
 	return p.changes, nil
+}
+
+func (p *groupingPersister) Close() {
+	close(p.changes)
 }

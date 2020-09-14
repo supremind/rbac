@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/houz42/rbac/types"
 	"github.com/houz42/rbac/internal/persist/filter"
+	"github.com/houz42/rbac/types"
 )
 
 type persistedPermission struct {
@@ -14,16 +14,12 @@ type persistedPermission struct {
 }
 
 // NewPersistedPermission persists the permission polices with given persister, and makes sure it is synced
-func NewPersistedPermission(ctx context.Context, inner types.Permission, persist types.PermissionPersister) (*persistedPermission, error) {
-	if inner == nil {
-		inner = NewThinPermission()
-	}
-	inner = NewSyncedPermission(inner)
+func NewPersistedPermission(ctx context.Context, persist types.PermissionPersister) (*persistedPermission, error) {
+	persist = filter.NewPermissionPersisterFilter(persist)
 
-	persist= filter.NewPermissionPersisterFilter(persist)
 	p := &persistedPermission{
 		persist:    persist,
-		Permission: inner,
+		Permission: NewSyncedPermission(NewThinPermission()),
 	}
 
 	if e := p.loadPersisted(); e != nil {
@@ -105,10 +101,15 @@ func (p *persistedPermission) Permit(sub types.Subject, obj types.Object, act ty
 	if e != nil {
 		return e
 	}
-	after := act | before
 
-	if e := p.persist.Upsert(sub, obj, after); e != nil {
-		return e
+	if before > 0 {
+		if e := p.persist.Update(sub, obj, act|before); e != nil {
+			return e
+		}
+	} else {
+		if e := p.persist.Insert(sub, obj, act); e != nil {
+			return e
+		}
 	}
 
 	return p.Permission.Permit(sub, obj, act)
