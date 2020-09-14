@@ -1,6 +1,8 @@
 package mgo
 
-import "github.com/globalsign/mgo"
+import (
+	"github.com/globalsign/mgo"
+)
 
 type collection struct {
 	*mgo.Collection

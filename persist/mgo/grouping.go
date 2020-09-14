@@ -3,22 +3,26 @@ package mgo
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"github.com/go-logr/logr"
 	"github.com/houz42/rbac/types"
 )
 
 // GroupingPersister is a GroupingPersister backed by mongodb
 type GroupingPersister struct {
 	*collection
+	log logr.Logger
 }
 
 // NewGrouping uses the given mongodb collection as backend to persist grouping polices
 func NewGrouping(coll *mgo.Collection) (*GroupingPersister, error) {
-	c := &GroupingPersister{&collection{Collection: coll}}
+	c := &GroupingPersister{
+		collection: &collection{Collection: coll},
+		log
+	}
 	ss := c.copySession()
 	defer ss.closeSession()
 
@@ -77,24 +81,6 @@ func (p *GroupingPersister) Remove(ent types.Entity, group types.Group) error {
 	defer ss.closeSession()
 
 	return ss.Remove(groupingPolicy{entity: ent, group: group})
-}
-
-// RemoveByGroup removes all policies about the group from the persister
-func (p *GroupingPersister) RemoveByGroup(group types.Group) error {
-	ss := p.copySession()
-	defer ss.closeSession()
-
-	_, e := ss.RemoveAll(bson.M{"$or": []bson.M{{"entity": group.String()}, {"group": group.String()}}})
-	return e
-}
-
-// RemoveByMember removes all policies about the member from the persister
-func (p *GroupingPersister) RemoveByMember(member types.Member) error {
-	ss := p.copySession()
-	defer ss.closeSession()
-
-	_, e := ss.RemoveAll(bson.M{"entity": member.String()})
-	return e
 }
 
 // List all policies from the persister
@@ -157,22 +143,21 @@ func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 					case update, replace:
 						change.Method = types.PersistUpdate
 					default:
-						return fmt.Errorf("unknown operation type: %s", event.OperationType)
+						p.log.Info("unknown operation type", "operation type", event.OperationType, "document", event.FullDocument)
+						continue
 					}
 
 					change.Entity = event.FullDocument.entity
 					change.Group = event.FullDocument.group
 					changes <- change
 
-				} else {
-					if e := cs.Err(); e != nil {
-						if errors.Is(e, mgo.ErrNotFound) {
-							// no need to reconnect, just wait
-							time.Sleep(10 * time.Second)
-							goto fetchNext
-						}
-						return e
+				} else if e := cs.Err(); e != nil {
+					if errors.Is(e, mgo.ErrNotFound) {
+						p.log.Info("watch found nothing, retry later")
+						time.Sleep(10 * time.Second)
+						goto fetchNext
 					}
+					return e
 				}
 			}
 		}
@@ -181,12 +166,11 @@ func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 	go func() {
 		for {
 			e := run()
-			_ = e
-			// todo: log or panic
 			select {
 			case <-ctx.Done():
 				return
 			default:
+				p.log.Error(e, "watch failed, retry")
 			}
 		}
 	}()

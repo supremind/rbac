@@ -3,17 +3,18 @@ package mgo
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"github.com/go-logr/logr"
 	"github.com/houz42/rbac/types"
 )
 
 // PermissionPersister is a PermissionPersister backed by mongodb
 type PermissionPersister struct {
 	*collection
+	log logr.Logger
 }
 
 // NewPermission uses the given mongodb collection as backend to persist grouping polices
@@ -75,7 +76,10 @@ func (p *PermissionPersister) Upsert(sub types.Subject, obj types.Object, act ty
 	ss := p.copySession()
 	defer ss.closeSession()
 
-	return ss.Insert(permissionPolicy{subject: sub, object: obj, action: act})
+	return ss.UpdateOne(bson.M{"subject": sub.String(), "object": obj.String()},
+		permissionPolicy{subject: sub, object: obj, action: act},
+		bson.M{"upsert": true},
+	)
 }
 
 // Remove a permission policy from the persister
@@ -146,7 +150,8 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 					case update, replace:
 						change.Method = types.PersistUpdate
 					default:
-						return fmt.Errorf("unknown operation type: %s", event.OperationType)
+						p.log.Info("unknown operation type", "operation type", event.OperationType, "document", event.FullDocument)
+						continue
 					}
 
 					change.Subject = event.FullDocument.subject
@@ -157,7 +162,7 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 				} else {
 					if e := cs.Err(); e != nil {
 						if errors.Is(e, mgo.ErrNotFound) {
-							//
+							p.log.Info("watch found nothing, retry later")
 							time.Sleep(10 * time.Second)
 							goto fetchNext
 						}
@@ -177,6 +182,7 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 			case <-ctx.Done():
 				return
 			default:
+				p.log.Error(e, "watch failed, retry")
 			}
 		}
 	}()
