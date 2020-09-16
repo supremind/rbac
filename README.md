@@ -41,6 +41,7 @@ This project is still in developing, and is not considered production ready.
 
 Available persister implementations are listed as follow. PR for other implementations or references to other projects are welcome.
 
-| package name                         | backend       | driver                      |
-| ------------------------------------ | ------------- | --------------------------- |
-| `github.com/houz42/rbac/persist/mgo` | MongoDB (3.6) | `github.com/globalsign/mgo` |
+| package name                         | backend       | driver                      | go doc                                                                                                                            |
+| ------------------------------------ | ------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `github.com/houz42/rbac/persist/mgo` | MongoDB (3.6) | `github.com/globalsign/mgo` | [![PkgGoDev](https://pkg.go.dev/badge/github.com/houz42/rbac/persist/mgo)](https://pkg.go.dev/github.com/houz42/rbac/persist/mgo) |
+|                                      |
