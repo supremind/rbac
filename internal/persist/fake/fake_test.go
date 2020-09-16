@@ -11,13 +11,16 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestAction(t *testing.T) {
+func TestFakePersisters(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "fake persisters")
 }
 
-var ctx = context.Background()
+var _ = BeforeSuite(func() {
+	ctx := context.Background()
+	TestGroupingPersister(NewGroupingPersister(ctx))
+	TestPermissionPersister(NewPermissionPersister(ctx))
+})
 
-var _ = GroupingPersisterTestCases(ctx, "fake grouping persister", NewGroupingPersister(ctx))
-
-var _ = PermissionPersisterTestCases(ctx, "fake permission persister", NewPermissionPersister(ctx))
+var _ = GroupingCases
+var _ = PermissionCases

@@ -9,7 +9,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func GroupingPersisterTestCases(ctx context.Context, name string, gp types.GroupingPersister) bool {
+var gp types.GroupingPersister
+
+func TestGroupingPersister(p types.GroupingPersister) {
+	gp = p
+}
+
+var GroupingCases = Describe("grouping persister", func() {
 	insertPolices := []types.GroupingPolicy{
 		{Entity: types.User("alan"), Group: types.Role("a")},
 		{Entity: types.User("albert"), Group: types.Role("a")},
@@ -36,32 +42,32 @@ func GroupingPersisterTestCases(ctx context.Context, name string, gp types.Group
 		})
 	}
 
-	return Describe(name, func() {
-		It("send and receive changes", func() {
-			go func() {
-				defer GinkgoRecover()
+	It("gen and receive change events", func() {
+		w, e := gp.Watch(context.Background())
+		Expect(e).To(Succeed())
 
-				for _, policy := range insertPolices {
-					Expect(gp.Insert(policy.Entity, policy.Group)).To(Succeed())
-				}
+		go func() {
+			defer GinkgoRecover()
 
-				for _, policy := range removePolices {
-					Expect(gp.Remove(policy.Entity, policy.Group)).To(Succeed())
-				}
-			}()
-
-			w, e := gp.Watch(ctx)
-			Expect(e).To(Succeed())
-
-			for _, change := range changes {
-				Expect(<-w).To(Equal(change))
+			for _, policy := range insertPolices {
+				// policy := policy
+				Expect(gp.Insert(policy.Entity, policy.Group)).To(Succeed())
 			}
+			for _, policy := range removePolices {
+				// policy := policy
+				Expect(gp.Remove(policy.Entity, policy.Group)).To(Succeed())
+			}
+		}()
 
-			Consistently(w).ShouldNot(Receive())
-		})
+		for _, change := range changes {
+			// change := change
+			got, ok := <-w
+			Expect(ok).To(BeTrue())
+			Expect(got).To(Equal(change))
+		}
 
-		It("should list all remaining polices", func() {
-			Expect(gp.List()).To(ConsistOf(insertPolices[0], insertPolices[2], insertPolices[4]))
-		})
+		Consistently(w).ShouldNot(Receive())
+
+		Expect(gp.List()).To(ConsistOf(insertPolices[0], insertPolices[2], insertPolices[4]))
 	})
-}
+})

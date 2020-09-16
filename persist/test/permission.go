@@ -8,7 +8,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func PermissionPersisterTestCases(ctx context.Context, name string, pp types.PermissionPersister) bool {
+var pp types.PermissionPersister
+
+func TestPermissionPersister(p types.PermissionPersister) {
+	pp = p
+}
+
+var PermissionCases = Describe("permission persister", func() {
 	insertPolices := []types.PermissionPolicy{
 		{Subject: types.User("alan"), Object: types.Article("project apollo"), Action: types.ReadWrite},
 		{Subject: types.User("alan"), Object: types.Article("manhattan project"), Action: types.Read},
@@ -44,41 +50,39 @@ func PermissionPersisterTestCases(ctx context.Context, name string, pp types.Per
 		})
 	}
 
-	return Describe(name, func() {
-		It("should send and receive changes", func() {
-			go func() {
-				defer GinkgoRecover()
+	It("gen and receive changes", func() {
+		w, e := pp.Watch(context.Background())
+		Expect(e).To(Succeed())
 
-				for _, policy := range insertPolices {
-					Expect(pp.Insert(policy.Subject, policy.Object, policy.Action)).To(Succeed())
-				}
+		go func() {
+			defer GinkgoRecover()
 
-				for _, policy := range updatePolices {
-					Expect(pp.Update(policy.Subject, policy.Object, policy.Action)).To(Succeed())
-				}
-
-				for _, policy := range removePolices {
-					Expect(pp.Remove(policy.Subject, policy.Object)).To(Succeed())
-				}
-			}()
-
-			w, e := pp.Watch(ctx)
-			Expect(e).To(Succeed())
-
-			for _, change := range changes {
-				Expect(<-w).To(Equal(change))
+			for _, policy := range insertPolices {
+				Expect(pp.Insert(policy.Subject, policy.Object, policy.Action)).To(Succeed())
 			}
 
-			Consistently(w).ShouldNot(Receive())
-		})
+			for _, policy := range updatePolices {
+				Expect(pp.Update(policy.Subject, policy.Object, policy.Action)).To(Succeed())
+			}
 
-		It("should list all remaining polices", func() {
-			Expect(pp.List()).To(ConsistOf(
-				types.PermissionPolicy{Subject: types.User("alan"), Object: types.Article("project apollo"), Action: types.ReadWrite},
-				types.PermissionPolicy{Subject: types.User("alan"), Object: types.Article("manhattan project"), Action: types.Read},
-				types.PermissionPolicy{Subject: types.Role("european"), Object: types.Category("europe"), Action: types.ReadWrite},
-				types.PermissionPolicy{Subject: types.Role("european"), Object: types.Article("opeartion markert garden"), Action: types.Exec},
-			))
-		})
+			for _, policy := range removePolices {
+				Expect(pp.Remove(policy.Subject, policy.Object)).To(Succeed())
+			}
+		}()
+
+		for _, change := range changes {
+			got, ok := <-w
+			Expect(ok).To(BeTrue())
+			Expect(got).To(Equal(change))
+		}
+
+		Consistently(w).ShouldNot(Receive())
+
+		Expect(pp.List()).To(ConsistOf(
+			types.PermissionPolicy{Subject: types.User("alan"), Object: types.Article("project apollo"), Action: types.ReadWrite},
+			types.PermissionPolicy{Subject: types.User("alan"), Object: types.Article("manhattan project"), Action: types.Read},
+			types.PermissionPolicy{Subject: types.Role("european"), Object: types.Category("europe"), Action: types.ReadWrite},
+			types.PermissionPolicy{Subject: types.Role("european"), Object: types.Article("opeartion markert garden"), Action: types.Exec},
+		))
 	})
-}
+})
