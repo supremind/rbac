@@ -15,7 +15,7 @@ type groupingPersister struct {
 func NewGroupingPersister(ctx context.Context) *groupingPersister {
 	gp := &groupingPersister{
 		policies: make(map[types.Entity]map[types.Group]struct{}),
-		changes:  make(chan types.GroupingPolicyChange),
+		changes:  make(chan types.GroupingPolicyChange, 100),
 	}
 
 	go func() {
@@ -29,7 +29,7 @@ func NewGroupingPersister(ctx context.Context) *groupingPersister {
 func (p *groupingPersister) Insert(ent types.Entity, group types.Group) error {
 	if p.policies[ent] != nil {
 		if _, ok := p.policies[ent][group]; ok {
-			return nil
+			return types.ErrAlreadyExists
 		}
 	} else {
 		p.policies[ent] = make(map[types.Group]struct{})

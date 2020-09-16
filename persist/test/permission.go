@@ -50,6 +50,15 @@ var PermissionCases = Describe("permission persister", func() {
 		})
 	}
 
+	It("insert and remove policies as expected", func() {
+		policy := insertPolices[0]
+		Expect(pp.Insert(policy.Subject, policy.Object, policy.Action)).To(Succeed())
+		Expect(pp.Insert(policy.Subject, policy.Object, policy.Action)).NotTo(Succeed())
+
+		Expect(pp.Remove(policy.Subject, policy.Object)).To(Succeed())
+		Expect(pp.Remove(policy.Subject, policy.Object)).NotTo(Succeed())
+	})
+
 	It("gen and receive changes", func() {
 		w, e := pp.Watch(context.Background())
 		Expect(e).To(Succeed())

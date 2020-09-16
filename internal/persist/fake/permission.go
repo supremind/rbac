@@ -15,7 +15,7 @@ type permissionPersister struct {
 func NewPermissionPersister(ctx context.Context) *permissionPersister {
 	pp := &permissionPersister{
 		polices: make(map[types.Subject]map[types.Object]types.Action),
-		changes: make(chan types.PermissionPolicyChange),
+		changes: make(chan types.PermissionPolicyChange, 100),
 	}
 
 	go func() {
@@ -29,7 +29,7 @@ func NewPermissionPersister(ctx context.Context) *permissionPersister {
 func (p *permissionPersister) Insert(sub types.Subject, obj types.Object, act types.Action) error {
 	if p.polices[sub] != nil {
 		if p.polices[sub][obj] == act {
-			return nil
+			return types.ErrAlreadyExists
 		}
 	} else {
 		p.polices[sub] = make(map[types.Object]types.Action)

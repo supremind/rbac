@@ -42,6 +42,15 @@ var GroupingCases = Describe("grouping persister", func() {
 		})
 	}
 
+	It("insert and remove policies as expected", func() {
+		policy := insertPolices[0]
+		Expect(gp.Insert(policy.Entity, policy.Group)).To(Succeed())
+		Expect(gp.Insert(policy.Entity, policy.Group)).NotTo(Succeed())
+
+		Expect(gp.Remove(policy.Entity, policy.Group)).To(Succeed())
+		Expect(gp.Remove(policy.Entity, policy.Group)).NotTo(Succeed())
+	})
+
 	It("gen and receive change events", func() {
 		w, e := gp.Watch(context.Background())
 		Expect(e).To(Succeed())
@@ -50,17 +59,14 @@ var GroupingCases = Describe("grouping persister", func() {
 			defer GinkgoRecover()
 
 			for _, policy := range insertPolices {
-				// policy := policy
 				Expect(gp.Insert(policy.Entity, policy.Group)).To(Succeed())
 			}
 			for _, policy := range removePolices {
-				// policy := policy
 				Expect(gp.Remove(policy.Entity, policy.Group)).To(Succeed())
 			}
 		}()
 
 		for _, change := range changes {
-			// change := change
 			got, ok := <-w
 			Expect(ok).To(BeTrue())
 			Expect(got).To(Equal(change))

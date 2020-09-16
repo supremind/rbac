@@ -22,5 +22,7 @@ var _ = BeforeSuite(func() {
 	TestPermissionPersister(NewPermissionPersister(ctx))
 })
 
-var _ = GroupingCases
-var _ = PermissionCases
+var _ = Describe("mgo persisters", func() {
+	_ = GroupingCases
+	_ = PermissionCases
+})
