@@ -1,4 +1,4 @@
-# An RBAC Access Control Library in Golang
+# RBAC Access Control Library in Golang
 
 [![Actions Status](https://github.com/houz42/rbac/workflows/Go%20Test/badge.svg)](https://github.com/houz42/rbac/workflows/Go%20Test)
 [![Go Report Card](https://goreportcard.com/badge/github.com/houz42/rbac)](https://goreportcard.com/report/github.com/houz42/rbac)
@@ -39,4 +39,8 @@ This project is still in developing, and is not considered production ready.
 
 ## Available persister implementations
 
-For now, there is only a fake Persister implementation used for testings, a mongodb backed Persister is in the plan.
+Available persister implementations are listed as follow. PR for other implementations or references to other projects are welcome.
+
+| package name                         | backend       | driver                      |
+| ------------------------------------ | ------------- | --------------------------- |
+| `github.com/houz42/rbac/persist/mgo` | MongoDB (3.6) | `github.com/globalsign/mgo` |
