@@ -124,7 +124,7 @@ func (p *persistedPermission) Revoke(sub types.Subject, obj types.Object, act ty
 	after := before.Difference(act)
 
 	if after > 0 {
-		if e := p.persist.Upsert(sub, obj, after); e != nil {
+		if e := p.persist.Update(sub, obj, after); e != nil {
 			return e
 		}
 	} else {
