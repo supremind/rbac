@@ -36,7 +36,7 @@ func New(ctx context.Context, opts ...AuthorizerOption) (types.Authorizer, error
 	var p types.Permission = permission.NewSyncedPermission(nil)
 	if cfg.pp != nil {
 		var e error
-		p, e = permission.NewPersistedPermission(ctx, p, cfg.pp)
+		p, e = permission.NewPersistedPermission(ctx, cfg.pp)
 		if e != nil {
 			return nil, fmt.Errorf("init permission failed: %w", e)
 		}
