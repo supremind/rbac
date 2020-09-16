@@ -67,19 +67,23 @@ var PermissionCases = Describe("permission persister", func() {
 			defer GinkgoRecover()
 
 			for _, policy := range insertPolices {
+				policy := policy
 				Expect(pp.Insert(policy.Subject, policy.Object, policy.Action)).To(Succeed())
 			}
 
 			for _, policy := range updatePolices {
+				policy := policy
 				Expect(pp.Update(policy.Subject, policy.Object, policy.Action)).To(Succeed())
 			}
 
 			for _, policy := range removePolices {
+				policy := policy
 				Expect(pp.Remove(policy.Subject, policy.Object)).To(Succeed())
 			}
 		}()
 
 		for _, change := range changes {
+			change := change
 			got, ok := <-w
 			Expect(ok).To(BeTrue())
 			Expect(got).To(Equal(change))

@@ -40,7 +40,7 @@ type permissionPolicy struct {
 	action  types.Action
 }
 
-func (p *permissionPolicy) String() string {
+func (p permissionPolicy) String() string {
 	return fmt.Sprintf("subject: %s, object: %s, action: %s", p.subject.String(), p.object.String(), p.action.String())
 }
 
@@ -209,10 +209,11 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 					event.FullDocument = *policy
 
 				default:
-					p.log.Info("unknown operation type", "operation type", event.OperationType, "document", event.FullDocument)
+					p.log.Info("unknown operation type", "operation type", event.OperationType, "document", event.FullDocument.String())
 					continue
 				}
 
+				p.log.V(4).Info("got permission change event", "method", method, "document", event.FullDocument.String())
 				change := types.PermissionPolicyChange{
 					PermissionPolicy: types.PermissionPolicy{
 						Subject: event.FullDocument.subject,

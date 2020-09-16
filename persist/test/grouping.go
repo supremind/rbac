@@ -59,14 +59,17 @@ var GroupingCases = Describe("grouping persister", func() {
 			defer GinkgoRecover()
 
 			for _, policy := range insertPolices {
+				policy := policy
 				Expect(gp.Insert(policy.Entity, policy.Group)).To(Succeed())
 			}
 			for _, policy := range removePolices {
+				policy := policy
 				Expect(gp.Remove(policy.Entity, policy.Group)).To(Succeed())
 			}
 		}()
 
 		for _, change := range changes {
+			change := change
 			got, ok := <-w
 			Expect(ok).To(BeTrue())
 			Expect(got).To(Equal(change))
