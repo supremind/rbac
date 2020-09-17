@@ -1,10 +1,12 @@
 package mgo
 
 import (
+	"errors"
 	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/go-logr/logr"
+	"github.com/houz42/rbac/types"
 )
 
 // common collection utilities
@@ -32,6 +34,7 @@ func WithLogger(log logr.Logger) collectionOption {
 	}
 }
 
+// SetRetryTimeout controls how long it will wait before retry watch change stream
 func SetRetryTimeout(d time.Duration) collectionOption {
 	return func(coll *collection) {
 		coll.retryTimeout = d
@@ -46,3 +49,14 @@ const (
 	update  changeStreamOperationType = "update"
 	replace changeStreamOperationType = "replace"
 )
+
+func parseMgoError(e error) error {
+	switch {
+	case errors.Is(e, mgo.ErrNotFound):
+		return types.ErrNotFound
+	case mgo.IsDup(e):
+		return types.ErrAlreadyExists
+	}
+
+	return e
+}

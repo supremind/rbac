@@ -107,7 +107,7 @@ func (p *GroupingPersister) Insert(ent types.Entity, group types.Group) error {
 	g := group.String()
 
 	p.log.V(4).Info("insert grouping policy", "entity", e, "group", g)
-	return ss.Insert(bson.M{"_id": e + "#" + g, "entity": e, "group": g})
+	return parseMgoError(ss.Insert(bson.M{"_id": e + "#" + g, "entity": e, "group": g}))
 }
 
 // Remove a policy from the persister
@@ -119,7 +119,7 @@ func (p *GroupingPersister) Remove(ent types.Entity, group types.Group) error {
 	g := group.String()
 
 	p.log.V(4).Info("remove grouping policy", "entity", e, "group", g)
-	return ss.Remove(bson.M{"entity": e, "group": g})
+	return parseMgoError(ss.Remove(bson.M{"entity": e, "group": g}))
 }
 
 // List all policies from the persister

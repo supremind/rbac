@@ -129,7 +129,7 @@ func (p *PermissionPersister) Insert(sub types.Subject, obj types.Object, act ty
 	o := obj.String()
 
 	p.log.V(4).Info("insert permission policy", "subject", s, "object", o, "action", act.String())
-	return ss.Insert(bson.M{"_id": s + "#" + o, "subject": s, "object": o, "action": act.String()})
+	return parseMgoError(ss.Insert(bson.M{"_id": s + "#" + o, "subject": s, "object": o, "action": act.String()}))
 }
 
 // Update a permission policy to the persister
@@ -141,7 +141,7 @@ func (p *PermissionPersister) Update(sub types.Subject, obj types.Object, act ty
 	o := obj.String()
 
 	p.log.V(4).Info("update permission policy", "subject", s, "object", o, "action", act.String())
-	return ss.Update(bson.M{"subject": s, "object": o}, bson.M{"$set": bson.M{"action": act.String()}})
+	return parseMgoError(ss.Update(bson.M{"subject": s, "object": o}, bson.M{"$set": bson.M{"action": act.String()}}))
 }
 
 // Remove a permission policy from the persister
@@ -153,7 +153,7 @@ func (p *PermissionPersister) Remove(sub types.Subject, obj types.Object) error 
 	o := obj.String()
 
 	p.log.V(4).Info("remove permission policy", "subject", s, "object", o)
-	return ss.Remove(bson.M{"subject": s, "object": o})
+	return parseMgoError(ss.Remove(bson.M{"subject": s, "object": o}))
 }
 
 // List all polices from the persister
