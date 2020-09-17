@@ -19,7 +19,7 @@ func TestFakePersisters(t *testing.T) {
 var _ = BeforeSuite(func() {
 	ctx := context.Background()
 	TestGroupingPersister(NewGroupingPersister())
-	TestPermissionPersister(NewPermissionPersister(ctx))
+	TestPermissionPersister(NewPermissionPersister())
 })
 
 var _ = Describe("mgo persisters", func() {

@@ -12,7 +12,7 @@ type permissionPersister struct {
 }
 
 // NewPermissionPersister returns a fake permission persister which should not be used in real works
-func NewPermissionPersister(ctx context.Context) *permissionPersister {
+func NewPermissionPersister() *permissionPersister {
 	pp := &permissionPersister{
 		polices: make(map[types.Subject]map[types.Object]types.Action),
 	}
