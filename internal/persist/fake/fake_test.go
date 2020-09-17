@@ -18,7 +18,7 @@ func TestFakePersisters(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	ctx := context.Background()
-	TestGroupingPersister(NewGroupingPersister(ctx))
+	TestGroupingPersister(NewGroupingPersister())
 	TestPermissionPersister(NewPermissionPersister(ctx))
 })
 

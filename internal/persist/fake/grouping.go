@@ -12,17 +12,10 @@ type groupingPersister struct {
 }
 
 // NewGroupingPersister returns a fake grouping persister which should not be used in real works
-func NewGroupingPersister(ctx context.Context) *groupingPersister {
+func NewGroupingPersister() *groupingPersister {
 	gp := &groupingPersister{
 		policies: make(map[types.Entity]map[types.Group]struct{}),
-		changes:  make(chan types.GroupingPolicyChange, 100),
 	}
-
-	go func() {
-		<-ctx.Done()
-		close(gp.changes)
-	}()
-
 	return gp
 }
 
@@ -36,12 +29,16 @@ func (p *groupingPersister) Insert(ent types.Entity, group types.Group) error {
 	}
 
 	p.policies[ent][group] = struct{}{}
-	p.changes <- types.GroupingPolicyChange{
-		GroupingPolicy: types.GroupingPolicy{
-			Entity: ent,
-			Group:  group,
-		},
-		Method: types.PersistInsert,
+
+	if p.changes != nil {
+		p.policies[ent][group] = struct{}{}
+		p.changes <- types.GroupingPolicyChange{
+			GroupingPolicy: types.GroupingPolicy{
+				Entity: ent,
+				Group:  group,
+			},
+			Method: types.PersistInsert,
+		}
 	}
 
 	return nil
@@ -49,19 +46,22 @@ func (p *groupingPersister) Insert(ent types.Entity, group types.Group) error {
 
 func (p *groupingPersister) Remove(ent types.Entity, group types.Group) error {
 	if p.policies[ent] == nil {
-		return nil
+		return types.ErrNotFound
 	}
 	if _, ok := p.policies[ent][group]; !ok {
-		return nil
+		return types.ErrNotFound
 	}
 
 	delete(p.policies[ent], group)
-	p.changes <- types.GroupingPolicyChange{
-		GroupingPolicy: types.GroupingPolicy{
-			Entity: ent,
-			Group:  group,
-		},
-		Method: types.PersistDelete,
+
+	if p.changes != nil {
+		p.changes <- types.GroupingPolicyChange{
+			GroupingPolicy: types.GroupingPolicy{
+				Entity: ent,
+				Group:  group,
+			},
+			Method: types.PersistDelete,
+		}
 	}
 
 	return nil
@@ -79,6 +79,7 @@ func (p *groupingPersister) List() ([]types.GroupingPolicy, error) {
 }
 
 func (p *groupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPolicyChange, error) {
+	p.changes = make(chan types.GroupingPolicyChange)
 	return p.changes, nil
 }
 
