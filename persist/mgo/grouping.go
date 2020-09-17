@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
-	"git.supremind.info/products/atom/com/stream"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/houz42/rbac/types"
@@ -159,7 +157,7 @@ type groupingChangeEvent struct {
 
 // Watch any changes occurred about the policies in the persister
 func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPolicyChange, error) {
-	connect := func() (*mgo.ChangeStream, io.Closer, error) {
+	connect := func() (*mgo.ChangeStream, func(), error) {
 		ss := p.copySession()
 		cs, e := ss.Watch(nil, mgo.ChangeStreamOptions{
 			FullDocument: mgo.UpdateLookup,
@@ -170,11 +168,10 @@ func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 
 		p.log.Info("watch mongo stream change")
 
-		return cs, stream.FuncCloser(func() error {
+		return cs, func() {
 			cs.Close()
 			ss.closeSession()
-			return nil
-		}), nil
+		}, nil
 	}
 
 	fetch := func(cs *mgo.ChangeStream, changes chan<- types.GroupingPolicyChange) error {
@@ -254,7 +251,7 @@ func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 		for {
 			select {
 			case <-ctx.Done():
-				closer.Close()
+				closer()
 				return
 
 			default:
@@ -269,7 +266,7 @@ func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 
 				firstConnect = false
 				e := fetch(cs, changes)
-				closer.Close()
+				closer()
 				if e != nil {
 					p.log.Error(e, "fetch event change failed, reconnect later")
 				}
