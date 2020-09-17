@@ -5,6 +5,7 @@ import "errors"
 // exported errors
 var (
 	ErrNotFound          = errors.New("not found")
+	ErrAlreadyExists     = errors.New("already exists")
 	ErrInvalidEntity     = errors.New("invlid entity, it should be one of user, role, article, and catetory")
 	ErrInvalidGroup      = errors.New("invalid group, it should be a role or a catetory")
 	ErrInvalidMember     = errors.New("invalid member, it should be a user or an article")

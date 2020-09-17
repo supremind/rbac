@@ -12,28 +12,40 @@ type permissionPersister struct {
 }
 
 // NewPermissionPersister returns a fake permission persister which should not be used in real works
-func NewPermissionPersister(ctx context.Context, initPolices ...types.PermissionPolicy) *permissionPersister {
+func NewPermissionPersister() *permissionPersister {
 	pp := &permissionPersister{
 		polices: make(map[types.Subject]map[types.Object]types.Action),
-		changes: make(chan types.PermissionPolicyChange),
 	}
-
-	for _, policy := range initPolices {
-		if pp.polices[policy.Subject] == nil {
-			pp.polices[policy.Subject] = make(map[types.Object]types.Action)
-		}
-		pp.polices[policy.Subject][policy.Object] |= policy.Action
-	}
-
-	go func() {
-		<-ctx.Done()
-		close(pp.changes)
-	}()
 
 	return pp
 }
 
-func (p *permissionPersister) Upsert(sub types.Subject, obj types.Object, act types.Action) error {
+func (p *permissionPersister) Insert(sub types.Subject, obj types.Object, act types.Action) error {
+	if p.polices[sub] != nil {
+		if p.polices[sub][obj] == act {
+			return types.ErrAlreadyExists
+		}
+	} else {
+		p.polices[sub] = make(map[types.Object]types.Action)
+	}
+
+	p.polices[sub][obj] = act
+
+	if p.changes != nil {
+		p.changes <- types.PermissionPolicyChange{
+			PermissionPolicy: types.PermissionPolicy{
+				Subject: sub,
+				Object:  obj,
+				Action:  act,
+			},
+			Method: types.PersistInsert,
+		}
+	}
+
+	return nil
+}
+
+func (p *permissionPersister) Update(sub types.Subject, obj types.Object, act types.Action) error {
 	if p.polices[sub] != nil {
 		if p.polices[sub][obj] == act {
 			return nil
@@ -43,30 +55,38 @@ func (p *permissionPersister) Upsert(sub types.Subject, obj types.Object, act ty
 	}
 
 	p.polices[sub][obj] = act
-	p.changes <- types.PermissionPolicyChange{
-		PermissionPolicy: types.PermissionPolicy{
-			Subject: sub,
-			Object:  obj,
-			Action:  act,
-		},
-		Method: types.PersistInsert,
+
+	if p.changes != nil {
+		p.changes <- types.PermissionPolicyChange{
+			PermissionPolicy: types.PermissionPolicy{
+				Subject: sub,
+				Object:  obj,
+				Action:  act,
+			},
+			Method: types.PersistUpdate,
+		}
 	}
+
 	return nil
 }
 
 func (p *permissionPersister) Remove(sub types.Subject, obj types.Object) error {
 	if p.polices[sub] == nil || p.polices[sub][obj] == 0 {
-		return nil
+		return types.ErrNotFound
 	}
 
 	delete(p.polices[sub], obj)
-	p.changes <- types.PermissionPolicyChange{
-		PermissionPolicy: types.PermissionPolicy{
-			Subject: sub,
-			Object:  obj,
-		},
-		Method: types.PersistDelete,
+
+	if p.changes != nil {
+		p.changes <- types.PermissionPolicyChange{
+			PermissionPolicy: types.PermissionPolicy{
+				Subject: sub,
+				Object:  obj,
+			},
+			Method: types.PersistDelete,
+		}
 	}
+
 	return nil
 }
 
@@ -86,5 +106,6 @@ func (p *permissionPersister) List() ([]types.PermissionPolicy, error) {
 }
 
 func (p *permissionPersister) Watch(context.Context) (<-chan types.PermissionPolicyChange, error) {
+	p.changes = make(chan types.PermissionPolicyChange)
 	return p.changes, nil
 }
