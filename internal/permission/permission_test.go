@@ -12,7 +12,7 @@ import (
 	. "github.com/houz42/rbac/internal/authorizer"
 	. "github.com/houz42/rbac/internal/grouping"
 	. "github.com/houz42/rbac/internal/permission"
-	. "github.com/houz42/rbac/internal/persist/fake"
+	. "github.com/houz42/rbac/persist/fake"
 	. "github.com/houz42/rbac/types"
 )
 

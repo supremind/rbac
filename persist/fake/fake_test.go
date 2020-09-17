@@ -3,7 +3,7 @@ package fake_test
 import (
 	"testing"
 
-	. "github.com/houz42/rbac/internal/persist/fake"
+	. "github.com/houz42/rbac/persist/fake"
 	. "github.com/houz42/rbac/persist/test"
 
 	. "github.com/onsi/ginkgo"

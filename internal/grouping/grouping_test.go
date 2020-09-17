@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "github.com/houz42/rbac/internal/grouping"
-	. "github.com/houz42/rbac/internal/persist/fake"
 	. "github.com/houz42/rbac/internal/testdata"
+	. "github.com/houz42/rbac/persist/fake"
 	. "github.com/houz42/rbac/types"
 )
 
