@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
+	"git.supremind.info/products/atom/com/stream"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/houz42/rbac/types"
@@ -150,26 +152,32 @@ type groupingChangeEvent struct {
 	DocumentKey   struct {
 		ID string `bson:"_id,omitempty"`
 	} `bson:"documentKey,omitempty"`
+	UpdateDescription struct {
+		UpdatedFields map[string]string `bson:"updatedFields,omitempty"`
+	} `bson:"updateDescription,omitempty"`
 }
 
 // Watch any changes occurred about the policies in the persister
 func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPolicyChange, error) {
-	changes := make(chan types.GroupingPolicyChange)
-
-	run := func() error {
+	connect := func() (*mgo.ChangeStream, io.Closer, error) {
 		ss := p.copySession()
-		defer ss.closeSession()
-
 		cs, e := ss.Watch(nil, mgo.ChangeStreamOptions{
 			FullDocument: mgo.UpdateLookup,
 		})
 		if e != nil {
-			return e
+			return nil, nil, e
 		}
-		defer cs.Close()
 
-		p.log.V(2).Info("watch mongo stream change")
+		p.log.Info("watch mongo stream change")
 
+		return cs, stream.FuncCloser(func() error {
+			cs.Close()
+			ss.closeSession()
+			return nil
+		}), nil
+	}
+
+	fetch := func(cs *mgo.ChangeStream, changes chan<- types.GroupingPolicyChange) error {
 		for {
 			var event groupingChangeEvent
 			if cs.Next(&event) {
@@ -178,10 +186,22 @@ func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 				switch event.OperationType {
 				case insert:
 					method = types.PersistInsert
-				case update, replace:
+				case update:
 					method = types.PersistUpdate
+					// returned fulldocument is queried after updating, may not be the same as which intended to update to
+					// and event be deleted already
+					if event.FullDocument.entity == nil || event.FullDocument.group == nil {
+						policy, e := parseGroupingPolicyID(event.DocumentKey.ID)
+						if e != nil {
+							p.log.Error(e, "parse document key in permission delete event", "id", event.DocumentKey.ID)
+							continue
+						}
+						event.FullDocument = *policy
+					}
+
 				case delete:
 					method = types.PersistDelete
+					// we cannot get fulldocument if deleted, and have to parse it from id
 					policy, e := parseGroupingPolicyID(event.DocumentKey.ID)
 					if e != nil {
 						p.log.Error(e, "parse document key in grouping delete event", "id ", event.DocumentKey.ID)
@@ -195,7 +215,6 @@ func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 				}
 
 				p.log.V(4).Info("got grouping change event", "method", method, "document", event.FullDocument.String())
-
 				change := types.GroupingPolicyChange{
 					GroupingPolicy: types.GroupingPolicy{
 						Entity: event.FullDocument.entity,
@@ -224,15 +243,35 @@ func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 		}
 	}
 
+	cs, closer, e := connect()
+	if e != nil {
+		return nil, e
+	}
+	firstConnect := true
+
+	changes := make(chan types.GroupingPolicyChange)
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
+				closer.Close()
 				return
 
 			default:
-				if e := run(); e != nil {
-					p.log.Error(e, "watch failed, reconnect")
+				if !firstConnect {
+					cs, closer, e = connect()
+					if e != nil {
+						p.log.Error(e, "connect to watch failed, reconnect later")
+						time.Sleep(p.retryTimeout)
+						continue
+					}
+				}
+
+				firstConnect = false
+				e := fetch(cs, changes)
+				closer.Close()
+				if e != nil {
+					p.log.Error(e, "fetch event change failed, reconnect later")
 				}
 				time.Sleep(p.retryTimeout)
 			}

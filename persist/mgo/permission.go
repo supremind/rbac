@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/houz42/rbac/types"
+	"github.com/supremind/pkg/stream"
 )
 
 // PermissionPersister is a PermissionPersister backed by mongodb
@@ -41,7 +43,20 @@ type permissionPolicy struct {
 }
 
 func (p permissionPolicy) String() string {
-	return fmt.Sprintf("subject: %s, object: %s, action: %s", p.subject.String(), p.object.String(), p.action.String())
+	var s, o, a string
+	if p.subject != nil {
+		s = p.subject.String()
+	} else {
+		s = "nil"
+	}
+	if p.object != nil {
+		s = p.object.String()
+	} else {
+		o = "nil"
+	}
+	a = p.action.String()
+
+	return fmt.Sprintf("subject: %s, object: %s, action: %s", s, o, a)
 }
 
 func (p *permissionPolicy) SetBSON(raw bson.Raw) error {
@@ -171,24 +186,32 @@ type permissionChangeEvent struct {
 	DocumentKey   struct {
 		ID string `bson:"_id,omitempty"`
 	} `bson:"documentKey,omitempty"`
+	UpdateDescription struct {
+		UpdatedFields map[string]string `bson:"updatedFields,omitempty"`
+	} `bson:"updateDescription,omitempty"`
 }
 
 // Watch any changes occurred about the polices in the persister
 func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.PermissionPolicyChange, error) {
-	changes := make(chan types.PermissionPolicyChange)
-
-	run := func() error {
+	connect := func() (*mgo.ChangeStream, io.Closer, error) {
 		ss := p.copySession()
-		defer ss.closeSession()
-
 		cs, e := ss.Watch(nil, mgo.ChangeStreamOptions{
 			FullDocument: mgo.UpdateLookup,
 		})
 		if e != nil {
-			return e
+			return nil, nil, e
 		}
-		defer cs.Close()
 
+		p.log.Info("watch mongo stream change")
+
+		return cs, stream.FuncCloser(func() error {
+			cs.Close()
+			ss.closeSession()
+			return nil
+		}), nil
+	}
+
+	fetch := func(cs *mgo.ChangeStream, changes chan<- types.PermissionPolicyChange) error {
 		for {
 			var event permissionChangeEvent
 			if cs.Next(&event) {
@@ -197,10 +220,28 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 				switch event.OperationType {
 				case insert:
 					method = types.PersistInsert
-				case update, replace:
+				case update:
 					method = types.PersistUpdate
+					// returned fulldocument is queried after updating, may not be the same as which intended to update to
+					// and event be deleted already
+					if event.FullDocument.subject == nil || event.FullDocument.object == nil {
+						policy, e := parsePermissionPolicyID(event.DocumentKey.ID)
+						if e != nil {
+							p.log.Error(e, "parse document key in permission delete event", "id", event.DocumentKey.ID)
+							continue
+						}
+						event.FullDocument = *policy
+					}
+					action, e := types.ParseAction(event.UpdateDescription.UpdatedFields["action"])
+					if e != nil {
+						p.log.Error(e, "parse action in update description", "id", event.DocumentKey.ID, "update description", event.UpdateDescription)
+						continue
+					}
+					event.FullDocument.action = action
+
 				case delete:
 					method = types.PersistDelete
+					// we cannot get fulldocument if deleted, and have to parse it from id
 					policy, e := parsePermissionPolicyID(event.DocumentKey.ID)
 					if e != nil {
 						p.log.Error(e, "parse document key in permission delete event", "id ", event.DocumentKey.ID)
@@ -213,7 +254,7 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 					continue
 				}
 
-				p.log.V(4).Info("got permission change event", "method", method, "document", event.FullDocument.String())
+				p.log.V(4).Info("got permission change event", "method", method, "document", event.FullDocument.String(), "key", event.DocumentKey.ID)
 				change := types.PermissionPolicyChange{
 					PermissionPolicy: types.PermissionPolicy{
 						Subject: event.FullDocument.subject,
@@ -244,15 +285,35 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 		}
 	}
 
+	cs, closer, e := connect()
+	if e != nil {
+		return nil, e
+	}
+	firstConnect := true
+
+	changes := make(chan types.PermissionPolicyChange)
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
+				closer.Close()
 				return
 
 			default:
-				if e := run(); e != nil {
-					p.log.Error(e, "watch failed, reconnect")
+				if !firstConnect {
+					cs, closer, e = connect()
+					if e != nil {
+						p.log.Error(e, "connect to watch failed, reconnect later")
+						time.Sleep(p.retryTimeout)
+						continue
+					}
+				}
+
+				firstConnect = false
+				e := fetch(cs, changes)
+				closer.Close()
+				if e != nil {
+					p.log.Error(e, "fetch event change failed, reconnect later")
 				}
 				time.Sleep(p.retryTimeout)
 			}
