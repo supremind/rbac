@@ -1,7 +1,6 @@
 package fake_test
 
 import (
-	"context"
 	"testing"
 
 	. "github.com/houz42/rbac/internal/persist/fake"
@@ -17,7 +16,6 @@ func TestFakePersisters(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	ctx := context.Background()
 	TestGroupingPersister(NewGroupingPersister())
 	TestPermissionPersister(NewPermissionPersister())
 })

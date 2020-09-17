@@ -34,11 +34,11 @@ var _ = BeforeSuite(func() {
 	logger := stdr.New(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
 	stdr.SetVerbosity(4)
 
-	gp, e := NewGrouping(db.C("grouping"), WithLogger(logger), SetRetryTimeout(1*time.Second))
+	gp, e := NewGrouping(db.C("grouping"), WithLogger(logger.WithName("grouping persister")), SetRetryTimeout(1*time.Second))
 	Expect(e).To(Succeed())
 	TestGroupingPersister(gp)
 
-	pp, e := NewPermission(db.C("permission"), WithLogger(logger), SetRetryTimeout(100*time.Microsecond))
+	pp, e := NewPermission(db.C("permission"), WithLogger(logger.WithName("permission persister")), SetRetryTimeout(100*time.Microsecond))
 	Expect(e).To(Succeed())
 	TestPermissionPersister(pp)
 })

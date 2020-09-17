@@ -48,7 +48,7 @@ var _ = Describe("grouping implementation", func() {
 		{
 			name: "fake persisted",
 			g: func() Grouping {
-				g, e := NewPersistedGrouping(context.Background(), nil, NewGroupingPersister(context.Background()))
+				g, e := NewPersistedGrouping(context.Background(), nil, NewGroupingPersister())
 				Expect(e).To(Succeed())
 				return g
 			}(),
