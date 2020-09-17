@@ -44,3 +44,6 @@ type Objector interface {
 	// Objects returns the GroupingReader interface for objects
 	Objects() GroupingReader
 }
+
+// PresetPolicy
+type PresetPolicy func(Authorizer, Subject, Object, Action) bool

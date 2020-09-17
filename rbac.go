@@ -42,7 +42,12 @@ func New(ctx context.Context, opts ...AuthorizerOption) (types.Authorizer, error
 		}
 	}
 
-	authz := authorizer.NewSyncedAuthorizer(authorizer.NewAuthorizer(sg, og, p))
+	var authz types.Authorizer
+	authz = authorizer.NewSyncedAuthorizer(authorizer.NewAuthorizer(sg, og, p))
+	if len(cfg.presets) > 0 {
+		authz = authorizer.NewWithPresetPolices(authz, cfg.presets...)
+	}
+
 	return authz, nil
 }
 
@@ -70,11 +75,19 @@ func WithPermissionPersister(p types.PermissionPersister) AuthorizerOption {
 	}
 }
 
+// WithPresetPolices add preset polices to authorizer
+func WithPresetPolices(presets ...types.PresetPolicy) AuthorizerOption {
+	return func(cfg *AuthorizerConfig) {
+		cfg.presets = append(cfg.presets, presets...)
+	}
+}
+
 // AuthorizerConfig works together with AuthorizerOption to control the initialization of authorizer
 type AuthorizerConfig struct {
-	sp types.GroupingPersister
-	op types.GroupingPersister
-	pp types.PermissionPersister
+	sp      types.GroupingPersister
+	op      types.GroupingPersister
+	pp      types.PermissionPersister
+	presets []types.PresetPolicy
 }
 
 // AuthorizerOption controls how to init an authorizer
