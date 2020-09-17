@@ -47,7 +47,7 @@ jobs:
 
     - name: Get dependencies
       run: |
-        go get -v -t -d ./...
+        cd persist/mgo && go get -v -t -d ./...
 
     - name: Start MongoDB
       uses: supercharge/mongodb-github-action@1.3.0

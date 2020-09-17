@@ -11,5 +11,4 @@ require (
 	github.com/houz42/rbac v0.0.0
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.2
-	github.com/supremind/pkg v0.1.0
 )
