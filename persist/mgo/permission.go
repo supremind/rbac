@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/houz42/rbac/types"
-	"github.com/supremind/pkg/stream"
 )
 
 // PermissionPersister is a PermissionPersister backed by mongodb
@@ -193,7 +191,7 @@ type permissionChangeEvent struct {
 
 // Watch any changes occurred about the polices in the persister
 func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.PermissionPolicyChange, error) {
-	connect := func() (*mgo.ChangeStream, io.Closer, error) {
+	connect := func() (*mgo.ChangeStream, func(), error) {
 		ss := p.copySession()
 		cs, e := ss.Watch(nil, mgo.ChangeStreamOptions{
 			FullDocument: mgo.UpdateLookup,
@@ -204,11 +202,10 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 
 		p.log.Info("watch mongo stream change")
 
-		return cs, stream.FuncCloser(func() error {
+		return cs, func() {
 			cs.Close()
 			ss.closeSession()
-			return nil
-		}), nil
+		}, nil
 	}
 
 	fetch := func(cs *mgo.ChangeStream, changes chan<- types.PermissionPolicyChange) error {
@@ -296,7 +293,7 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 		for {
 			select {
 			case <-ctx.Done():
-				closer.Close()
+				closer()
 				return
 
 			default:
@@ -311,7 +308,7 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 
 				firstConnect = false
 				e := fetch(cs, changes)
-				closer.Close()
+				closer()
 				if e != nil {
 					p.log.Error(e, "fetch event change failed, reconnect later")
 				}
