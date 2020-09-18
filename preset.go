@@ -10,8 +10,8 @@ func PublicShared(obj types.Object, act types.Action) types.PresetPolicy {
 				return true
 			}
 			if authz.Objects() != nil {
-				if art, ok := ro.(types.Article); ok {
-					if cat, ok := obj.(types.Category); ok {
+				if cat, ok := obj.(types.Category); ok {
+					if art, ok := ro.(types.Article); ok {
 						if in, e := authz.Objects().IsIn(art, cat); e == nil {
 							return in
 						}
@@ -31,8 +31,8 @@ func SuperUser(su types.Subject) types.PresetPolicy {
 			return true
 		}
 		if authz.Subjects() != nil {
-			if user, ok := rs.(types.User); ok {
-				if role, ok := rs.(types.Role); ok {
+			if role, ok := su.(types.Role); ok {
+				if user, ok := rs.(types.User); ok {
 					if in, e := authz.Subjects().IsIn(user, role); e == nil {
 						return in
 					}
