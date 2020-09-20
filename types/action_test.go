@@ -72,7 +72,7 @@ var _ = Describe("action", func() {
 			Entry("head is not rest", head, rest),
 		)
 
-		Describe("all actions", func() {
+		Specify("all actions returns union of all single actions", func() {
 			Expect(AllActions).To(BeEquivalentTo(1<<len(methods) - 1))
 		})
 	})

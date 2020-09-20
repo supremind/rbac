@@ -22,8 +22,10 @@ func TestGrouping(t *testing.T) {
 }
 
 var _ = Describe("grouping implementation", func() {
-	Expect(UserRoles).NotTo(BeEmpty())
-	Expect(RoleUsers).NotTo(BeEmpty())
+	Specify("init grouping polices are created", func() {
+		Expect(UserRoles).NotTo(BeEmpty())
+		Expect(RoleUsers).NotTo(BeEmpty())
+	})
 
 	var groupers = []struct {
 		name string
@@ -49,14 +51,16 @@ var _ = Describe("grouping implementation", func() {
 			name: "fake persisted",
 			g: func() Grouping {
 				g, e := NewPersistedGrouping(context.Background(), nil, NewGroupingPersister())
-				Expect(e).To(Succeed())
+				Specify("fake persisted grouping is created", func() {
+					Expect(e).To(Succeed())
+				})
 				return g
 			}(),
 		},
 	}
 
 	for _, tg := range groupers {
-		Context(tg.name, func() {
+		Describe(tg.name, func() {
 			g := tg.g
 
 			BeforeEach(func() {

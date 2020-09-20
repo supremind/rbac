@@ -22,28 +22,36 @@ func TestGroupedPermission(t *testing.T) {
 func loadRoleToArticlePolices(p Permission) {
 	for _, perm := range RoleToArticlePolices {
 		perm := perm
-		Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
+		Specify("init policy is joined", func() {
+			Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
+		})
 	}
 }
 
 func loadUserToCategoryPolices(p Permission) {
 	for _, perm := range UserToCategoryPolices {
 		perm := perm
-		Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
+		Specify("init policy is joined", func() {
+			Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
+		})
 	}
 }
 
 func loadRoleToCategoryPolices(p Permission) {
 	for _, perm := range RoleToCategoryPolices {
 		perm := perm
-		Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
+		Specify("init policy is joined", func() {
+			Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
+		})
 	}
 }
 
 func loadUserToArticlePolices(p Permission) {
 	for _, perm := range UserToArticlePolices {
 		perm := perm
-		Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
+		Specify("init policy is joined", func() {
+			Expect(p.Permit(perm.Sub, perm.Obj, perm.Act)).To(Succeed())
+		})
 	}
 }
 
@@ -51,7 +59,10 @@ func newTestSubjectGrouping() Grouping {
 	g := NewFatGrouping()
 	for user, roles := range UserRoles {
 		for _, role := range roles {
-			Expect(g.Join(user, role)).To(Succeed())
+			user, role := user, role
+			Specify("init policy is joined", func() {
+				Expect(g.Join(user, role)).To(Succeed())
+			})
 		}
 	}
 	return g
@@ -60,7 +71,10 @@ func newTestSubjectGrouping() Grouping {
 func newTestObjectGrouping() Grouping {
 	g := NewFatGrouping()
 	for _, perm := range ObjectGroupings {
-		Expect(g.Join(perm.Art, perm.Cat)).To(Succeed())
+		perm := perm
+		Specify("init policy is joined", func() {
+			Expect(g.Join(perm.Art, perm.Cat)).To(Succeed())
+		})
 	}
 	return g
 }
