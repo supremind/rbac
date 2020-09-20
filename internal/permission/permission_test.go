@@ -65,14 +65,16 @@ var _ = Describe("base permitter implementation", func() {
 			name: "persisted",
 			p: func() Permission {
 				p, e := NewPersistedPermission(context.Background(), NewPermissionPersister())
-				Expect(e).To(Succeed())
+				Specify("persisted permission is created", func() {
+					Expect(e).To(Succeed())
+				})
 				return p
 			}(),
 		},
 	}
 
 	for _, tp := range permitters {
-		Context(tp.name, func() {
+		Describe(tp.name, func() {
 			p := tp.p
 
 			BeforeEach(func() {
