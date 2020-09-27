@@ -34,88 +34,118 @@ func NewPermission(coll *mgo.Collection, opts ...collectionOption) (*PermissionP
 	return c, nil
 }
 
-type permissionPolicy struct {
-	subject types.Subject
-	object  types.Object
-	action  types.Action
+type permissionPolicyDO struct {
+	ID      string       `bson:"_id"`
+	Subject subject      `bson:"subject,omitempty"`
+	Object  object       `bson:"object,omitempty"`
+	Action  types.Action `bson:"action,omitempty"`
 }
 
-func (p permissionPolicy) String() string {
-	var s, o, a string
-	if p.subject != nil {
-		s = p.subject.String()
-	} else {
-		s = "nil"
-	}
-	if p.object != nil {
-		s = p.object.String()
-	} else {
-		o = "nil"
-	}
-	a = p.action.String()
+func newPermissionPolicyDO(sub types.Subject, obj types.Object, act types.Action) *permissionPolicyDO {
+	p := &permissionPolicyDO{Action: act}
 
-	return fmt.Sprintf("subject: %s, object: %s, action: %s", s, o, a)
+	switch sub.(type) {
+	case types.User:
+		p.Subject.User = sub.(types.User)
+	case types.Role:
+		p.Subject.Role = sub.(types.Role)
+	}
+
+	switch obj.(type) {
+	case types.Article:
+		p.Object.Article = obj.(types.Article)
+	case types.Category:
+		p.Object.Category = obj.(types.Category)
+	}
+
+	p.ID = p.id()
+	return p
 }
 
-func (p *permissionPolicy) SetBSON(raw bson.Raw) error {
-	m := make(bson.M)
-	if e := raw.Unmarshal(&m); e != nil {
+func (p *permissionPolicyDO) id() string {
+	return p.Subject.String() + "#" + p.Object.String()
+}
+
+func (p *permissionPolicyDO) parseID(id string) error {
+	parts := strings.SplitN(id, "#", 2)
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid grouping policy id: %s", id)
+	}
+
+	subject, object := parts[0], parts[1]
+	sub, e := types.ParseSubject(subject)
+	if e != nil {
+		return nil
+	}
+	switch sub.(type) {
+	case types.User:
+		p.Subject.User = sub.(types.User)
+	case types.Role:
+		p.Subject.Role = sub.(types.Role)
+	}
+
+	obj, e := types.ParseObject(object)
+	if e != nil {
 		return e
 	}
-
-	var sub, obj, act string
-	if v, ok := m["subject"].(string); ok {
-		sub = v
-	}
-	if v, ok := m["object"].(string); ok {
-		obj = v
-	}
-	if v, ok := m["action"].(string); ok {
-		act = v
-	}
-
-	if sub != "" && obj != "" && act != "" {
-		subject, e := types.ParseSubject(sub)
-		if e != nil {
-			return e
-		}
-		object, e := types.ParseObject(obj)
-		if e != nil {
-			return e
-		}
-		action, e := types.ParseAction(act)
-		if e != nil {
-			return e
-		}
-
-		p.subject = subject
-		p.object = object
-		p.action = action
+	switch obj.(type) {
+	case types.Article:
+		p.Object.Article = obj.(types.Article)
+	case types.Category:
+		p.Object.Category = obj.(types.Category)
 	}
 
 	return nil
 }
 
-func parsePermissionPolicyID(id string) (*permissionPolicy, error) {
-	parts := strings.SplitN(id, "#", 2)
-	if len(parts) < 2 {
-		return nil, fmt.Errorf("invalid permission policy id: %s", id)
+func (p *permissionPolicyDO) asPermissionPolicy() types.PermissionPolicy {
+	pp := types.PermissionPolicy{Action: p.Action}
+
+	switch {
+	case p.Subject.User != "":
+		pp.Subject = p.Subject.User
+	case p.Subject.Role != "":
+		pp.Subject = p.Subject.Role
 	}
 
-	sub, obj := parts[0], parts[1]
-	subject, e := types.ParseSubject(sub)
-	if e != nil {
-		return nil, nil
-	}
-	object, e := types.ParseObject(obj)
-	if e != nil {
-		return nil, e
+	switch {
+	case p.Object.Article != "":
+		pp.Object = p.Object.Article
+	case p.Object.Category != "":
+		pp.Object = p.Object.Category
 	}
 
-	return &permissionPolicy{
-		subject: subject,
-		object:  object,
-	}, nil
+	return pp
+}
+
+type subject struct {
+	User types.User `bson:"user,omitempty"`
+	Role types.Role `bson:"role,omitempty"`
+}
+
+func (sub *subject) String() string {
+	switch {
+	case sub.User != "":
+		return sub.User.String()
+	case sub.Role != "":
+		return sub.Role.String()
+	}
+	return ""
+}
+
+type object struct {
+	Article  types.Article  `bson:"article,omitempty"`
+	Category types.Category `bson:"category,omitempty"`
+}
+
+func (obj *object) String() string {
+	switch {
+	case obj.Article != "":
+		return obj.Article.String()
+	case obj.Category != "":
+		return obj.Category.String()
+	}
+	return ""
 }
 
 // Insert a permission policy to the persister
@@ -123,11 +153,10 @@ func (p *PermissionPersister) Insert(sub types.Subject, obj types.Object, act ty
 	ss := p.copySession()
 	defer ss.closeSession()
 
-	s := sub.String()
-	o := obj.String()
+	policy := newPermissionPolicyDO(sub, obj, act)
+	p.log.V(4).Info("insert permission policy", "policy", policy)
 
-	p.log.V(4).Info("insert permission policy", "subject", s, "object", o, "action", act.String())
-	return parseMgoError(ss.Insert(bson.M{"_id": s + "#" + o, "subject": s, "object": o, "action": act.String()}))
+	return parseMgoError(ss.Insert(policy))
 }
 
 // Update a permission policy to the persister
@@ -135,11 +164,10 @@ func (p *PermissionPersister) Update(sub types.Subject, obj types.Object, act ty
 	ss := p.copySession()
 	defer ss.closeSession()
 
-	s := sub.String()
-	o := obj.String()
+	policy := newPermissionPolicyDO(sub, obj, act)
+	p.log.V(4).Info("update permission policy", "policy", policy)
 
-	p.log.V(4).Info("update permission policy", "subject", s, "object", o, "action", act.String())
-	return parseMgoError(ss.Update(bson.M{"subject": s, "object": o}, bson.M{"$set": bson.M{"action": act.String()}}))
+	return parseMgoError(ss.UpdateId(policy.ID, bson.M{"$set": bson.M{"action": act}}))
 }
 
 // Remove a permission policy from the persister
@@ -147,11 +175,10 @@ func (p *PermissionPersister) Remove(sub types.Subject, obj types.Object) error 
 	ss := p.copySession()
 	defer ss.closeSession()
 
-	s := sub.String()
-	o := obj.String()
+	policy := newPermissionPolicyDO(sub, obj, 0)
+	p.log.V(4).Info("remove permission policy", "policy", policy)
 
-	p.log.V(4).Info("remove permission policy", "subject", s, "object", o)
-	return parseMgoError(ss.Remove(bson.M{"subject": s, "object": o}))
+	return parseMgoError(ss.RemoveId(policy.ID))
 }
 
 // List all polices from the persister
@@ -163,29 +190,28 @@ func (p *PermissionPersister) List() ([]types.PermissionPolicy, error) {
 	defer iter.Close()
 
 	polices := make([]types.PermissionPolicy, 0)
-	var mp permissionPolicy
+	var mp permissionPolicyDO
 	for iter.Next(&mp) {
-		polices = append(polices, types.PermissionPolicy{Subject: mp.subject, Object: mp.object, Action: mp.action})
-		mp = permissionPolicy{}
+		polices = append(polices, mp.asPermissionPolicy())
+		mp = permissionPolicyDO{}
 	}
 	if e := iter.Err(); e != nil {
 		return nil, e
 	}
 
-	p.log.V(4).Info("list permission policies", "count", len(polices))
-	p.log.V(5).Info("list permission policies", "polices", polices)
+	p.log.V(4).Info("list permission policies", "polices", polices)
 
 	return polices, nil
 }
 
 type permissionChangeEvent struct {
 	OperationType changeStreamOperationType `bson:"operationType,omitempty"`
-	FullDocument  permissionPolicy          `bson:"fullDocument,omitempty"`
+	FullDocument  permissionPolicyDO        `bson:"fullDocument,omitempty"`
 	DocumentKey   struct {
 		ID string `bson:"_id,omitempty"`
 	} `bson:"documentKey,omitempty"`
 	UpdateDescription struct {
-		UpdatedFields map[string]string `bson:"updatedFields,omitempty"`
+		UpdatedFields bson.M `bson:"updatedFields,omitempty"`
 	} `bson:"updateDescription,omitempty"`
 }
 
@@ -217,46 +243,47 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 				switch event.OperationType {
 				case insert:
 					method = types.PersistInsert
-				case update:
+
+				case update, replace:
 					method = types.PersistUpdate
 					// returned fulldocument is queried after updating, may not be the same as which intended to update to
 					// and event be deleted already
-					if event.FullDocument.subject == nil || event.FullDocument.object == nil {
-						policy, e := parsePermissionPolicyID(event.DocumentKey.ID)
-						if e != nil {
-							p.log.Error(e, "parse document key in permission delete event", "id", event.DocumentKey.ID)
-							continue
-						}
-						event.FullDocument = *policy
-					}
-					action, e := types.ParseAction(event.UpdateDescription.UpdatedFields["action"])
-					if e != nil {
-						p.log.Error(e, "parse action in update description", "id", event.DocumentKey.ID, "update description", event.UpdateDescription)
+					policy := permissionPolicyDO{}
+					if e := policy.parseID(event.DocumentKey.ID); e != nil {
+						p.log.Error(e, "parse permission policy id", "id", event.DocumentKey.ID)
 						continue
 					}
-					event.FullDocument.action = action
+					if v, ok := event.UpdateDescription.UpdatedFields["action"].(int); !ok {
+						p.log.Info("parse action in update description", "id", event.DocumentKey.ID, "update description", event.UpdateDescription)
+						continue
+					} else {
+						policy.Action = types.Action(v)
+					}
+
+					event.FullDocument = policy
 
 				case delete:
 					method = types.PersistDelete
 					// we cannot get fulldocument if deleted, and have to parse it from id
-					policy, e := parsePermissionPolicyID(event.DocumentKey.ID)
-					if e != nil {
-						p.log.Error(e, "parse document key in permission delete event", "id ", event.DocumentKey.ID)
+					policy := permissionPolicyDO{}
+					if e := policy.parseID(event.DocumentKey.ID); e != nil {
+						p.log.Error(e, "parse permission policy id", "id", event.DocumentKey.ID)
 						continue
 					}
-					event.FullDocument = *policy
+					event.FullDocument = policy
 
 				default:
-					p.log.Info("unknown operation type", "operation type", event.OperationType, "document", event.FullDocument.String())
+					p.log.Info("unknown operation type", "operation type", event.OperationType, "document", event.FullDocument)
 					continue
 				}
 
-				p.log.V(4).Info("got permission change event", "method", method, "document", event.FullDocument.String(), "key", event.DocumentKey.ID)
+				p.log.V(4).Info("got permission change event", "method", method, "document", event.FullDocument, "key", event.DocumentKey.ID)
+				policy := event.FullDocument.asPermissionPolicy()
 				change := types.PermissionPolicyChange{
 					PermissionPolicy: types.PermissionPolicy{
-						Subject: event.FullDocument.subject,
-						Object:  event.FullDocument.object,
-						Action:  event.FullDocument.action,
+						Subject: policy.Subject,
+						Object:  policy.Object,
+						Action:  policy.Action,
 					},
 					Method: method,
 				}
@@ -272,8 +299,8 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 
 			if e := cs.Err(); e != nil {
 				if errors.Is(e, mgo.ErrNotFound) {
-					p.log.Info("watch found nothing, retry later")
-					time.Sleep(10 * time.Second)
+					p.log.V(2).Info("watch found nothing, retry later")
+					time.Sleep(p.retryTimeout)
 					continue
 				}
 
