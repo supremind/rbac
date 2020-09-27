@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/houz42/rbac/types"
 )
 
@@ -34,66 +33,138 @@ func NewGrouping(coll *mgo.Collection, opts ...collectionOption) (*GroupingPersi
 	return c, nil
 }
 
-type groupingPolicy struct {
-	entity types.Entity
-	group  types.Group
+type groupingPolicyDO struct {
+	ID     string `bson:"_id"`
+	Entity entity `bson:"entity,omitempty"`
+	Group  group  `bson:"group,omitempty"`
 }
 
-func (p *groupingPolicy) String() string {
-	return fmt.Sprintf("entity: %s, group: %s", p.entity.String(), p.group.String())
+func newGroupingPolicyDO(ent types.Entity, grp types.Group) *groupingPolicyDO {
+	p := &groupingPolicyDO{}
+
+	switch ent.(type) {
+	case types.User:
+		p.Entity.User = ent.(types.User)
+	case types.Role:
+		p.Entity.Role = ent.(types.Role)
+	case types.Article:
+		p.Entity.Article = ent.(types.Article)
+	case types.Category:
+		p.Entity.Category = ent.(types.Category)
+	}
+
+	switch grp.(type) {
+	case types.Role:
+		p.Group.Role = grp.(types.Role)
+	case types.Category:
+		p.Group.Category = grp.(types.Category)
+	}
+
+	p.ID = p.id()
+
+	return p
 }
 
-func (p *groupingPolicy) SetBSON(raw bson.Raw) error {
-	m := make(bson.M)
-	if e := raw.Unmarshal(&m); e != nil {
-		return e
-	}
-
-	var ent, grp string
-	if v, ok := m["entity"].(string); ok {
-		ent = v
-	}
-	if v, ok := m["group"].(string); ok {
-		grp = v
-	}
-
-	if ent != "" && grp != "" {
-		entity, e := types.ParseEntity(ent)
-		if e != nil {
-			return nil
-		}
-		group, e := types.ParseGroup(grp)
-		if e != nil {
-			return e
-		}
-
-		p.entity = entity
-		p.group = group
-	}
-
-	return nil
+func (p *groupingPolicyDO) id() string {
+	return p.Entity.String() + "#" + p.Group.String()
 }
 
-func parseGroupingPolicyID(id string) (*groupingPolicy, error) {
+func (p *groupingPolicyDO) parseID(id string) error {
 	parts := strings.SplitN(id, "#", 2)
 	if len(parts) < 2 {
-		return nil, fmt.Errorf("invalid grouping policy id: %s", id)
+		return fmt.Errorf("invalid grouping policy id: %s", id)
 	}
 
 	ent, grp := parts[0], parts[1]
 	entity, e := types.ParseEntity(ent)
 	if e != nil {
-		return nil, nil
+		return nil
 	}
-	group, e := types.ParseGroup(grp)
-	if e != nil {
-		return nil, e
+	switch entity.(type) {
+	case types.User:
+		p.Entity.User = entity.(types.User)
+	case types.Role:
+		p.Entity.Role = entity.(types.Role)
+	case types.Article:
+		p.Entity.Article = entity.(types.Article)
+	case types.Category:
+		p.Entity.Category = entity.(types.Category)
 	}
 
-	return &groupingPolicy{
-		entity: entity,
-		group:  group,
-	}, nil
+	group, e := types.ParseGroup(grp)
+	if e != nil {
+		return e
+	}
+	switch group.(type) {
+	case types.Role:
+		p.Group.Role = group.(types.Role)
+	case types.Category:
+		p.Group.Category = group.(types.Category)
+	}
+
+	return nil
+}
+
+func (p *groupingPolicyDO) asGroupingPolicy() types.GroupingPolicy {
+	gp := types.GroupingPolicy{}
+
+	switch {
+	case p.Entity.User != "":
+		gp.Entity = p.Entity.User
+	case p.Entity.Role != "":
+		gp.Entity = p.Entity.Role
+	case p.Entity.Article != "":
+		gp.Entity = p.Entity.Article
+	case p.Entity.Category != "":
+		gp.Entity = p.Entity.Category
+	}
+
+	switch {
+	case p.Group.Role != "":
+		gp.Group = p.Group.Role
+	case p.Group.Category != "":
+		gp.Group = p.Group.Category
+	}
+
+	return gp
+}
+
+type entity struct {
+	// exactly one of these field should be set
+	User     types.User     `bson:"user,omitempty"`
+	Role     types.Role     `bson:"role,omitempty"`
+	Article  types.Article  `bson:"article,omitempty"`
+	Category types.Category `bson:"category,omitempty"`
+}
+
+func (e *entity) String() string {
+	switch {
+	case e.User != "":
+		return e.User.String()
+	case e.Role != "":
+		return e.Role.String()
+	case e.Article != "":
+		return e.Article.String()
+	case e.Category != "":
+		return e.Category.String()
+	}
+	return ""
+}
+
+type group struct {
+	// exactly one of these field should be set
+	Role     types.Role     `bson:"role,omitempty"`
+	Category types.Category `bson:"category,omitempty"`
+}
+
+func (g group) String() string {
+	switch {
+	case g.Role != "":
+		return g.Role.String()
+	case g.Category != "":
+		return g.Category.String()
+	}
+	return ""
 }
 
 // Insert inserts a policy to the persister
@@ -101,11 +172,10 @@ func (p *GroupingPersister) Insert(ent types.Entity, group types.Group) error {
 	ss := p.copySession()
 	defer ss.closeSession()
 
-	e := ent.String()
-	g := group.String()
+	policy := newGroupingPolicyDO(ent, group)
+	p.log.V(4).Info("insert group policy", "policy", policy)
 
-	p.log.V(4).Info("insert grouping policy", "entity", e, "group", g)
-	return parseMgoError(ss.Insert(bson.M{"_id": e + "#" + g, "entity": e, "group": g}))
+	return ss.Insert(policy)
 }
 
 // Remove a policy from the persister
@@ -113,11 +183,10 @@ func (p *GroupingPersister) Remove(ent types.Entity, group types.Group) error {
 	ss := p.copySession()
 	defer ss.closeSession()
 
-	e := ent.String()
-	g := group.String()
+	policy := newGroupingPolicyDO(ent, group)
+	p.log.V(4).Info("remove group policy", "policy", policy)
 
-	p.log.V(4).Info("remove grouping policy", "entity", e, "group", g)
-	return parseMgoError(ss.Remove(bson.M{"entity": e, "group": g}))
+	return parseMgoError(ss.RemoveId(policy.ID))
 }
 
 // List all policies from the persister
@@ -129,24 +198,24 @@ func (p *GroupingPersister) List() ([]types.GroupingPolicy, error) {
 	defer iter.Close()
 
 	polices := make([]types.GroupingPolicy, 0)
-	var gp groupingPolicy
+
+	var gp groupingPolicyDO
 	for iter.Next(&gp) {
-		polices = append(polices, types.GroupingPolicy{Entity: gp.entity, Group: gp.group})
-		gp = groupingPolicy{}
+		polices = append(polices, gp.asGroupingPolicy())
+		gp = groupingPolicyDO{}
 	}
 	if e := iter.Err(); e != nil {
 		return nil, e
 	}
 
-	p.log.V(4).Info("list grouping policies", "count", len(polices))
-	p.log.V(5).Info("list grouping policies", "polices", polices)
+	p.log.V(4).Info("list grouping policies", "polices", polices)
 
 	return polices, nil
 }
 
 type groupingChangeEvent struct {
 	OperationType changeStreamOperationType `bson:"operationType,omitempty"`
-	FullDocument  groupingPolicy            `bson:"fullDocument,omitempty"`
+	FullDocument  groupingPolicyDO          `bson:"fullDocument,omitempty"`
 	DocumentKey   struct {
 		ID string `bson:"_id,omitempty"`
 	} `bson:"documentKey,omitempty"`
@@ -186,36 +255,35 @@ func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 				case update:
 					method = types.PersistUpdate
 					// returned fulldocument is queried after updating, may not be the same as which intended to update to
-					// and event be deleted already
-					if event.FullDocument.entity == nil || event.FullDocument.group == nil {
-						policy, e := parseGroupingPolicyID(event.DocumentKey.ID)
-						if e != nil {
-							p.log.Error(e, "parse document key in permission delete event", "id", event.DocumentKey.ID)
-							continue
-						}
-						event.FullDocument = *policy
+					// and even be deleted already
+					policy := groupingPolicyDO{}
+					if e := policy.parseID(event.DocumentKey.ID); e != nil {
+						p.log.Error(e, "parse grouping policy do id", "id", event.DocumentKey.ID)
+						continue
 					}
+					event.FullDocument = policy
 
 				case delete:
 					method = types.PersistDelete
 					// we cannot get fulldocument if deleted, and have to parse it from id
-					policy, e := parseGroupingPolicyID(event.DocumentKey.ID)
-					if e != nil {
-						p.log.Error(e, "parse document key in grouping delete event", "id ", event.DocumentKey.ID)
+					policy := groupingPolicyDO{}
+					if e := policy.parseID(event.DocumentKey.ID); e != nil {
+						p.log.Error(e, "parse grouping policy do id", "id", event.DocumentKey.ID)
 						continue
 					}
-					event.FullDocument = *policy
+					event.FullDocument = policy
 
 				default:
-					p.log.Info("unknown operation type", "operation type", event.OperationType, "document", event.FullDocument.String())
+					p.log.Info("unknown operation type", "operation type", event.OperationType, "document", event.FullDocument)
 					continue
 				}
 
-				p.log.V(4).Info("got grouping change event", "method", method, "document", event.FullDocument.String())
+				p.log.V(4).Info("got grouping change event", "method", method, "policy", event.FullDocument)
+				policy := event.FullDocument.asGroupingPolicy()
 				change := types.GroupingPolicyChange{
 					GroupingPolicy: types.GroupingPolicy{
-						Entity: event.FullDocument.entity,
-						Group:  event.FullDocument.group,
+						Entity: policy.Entity,
+						Group:  policy.Group,
 					},
 					Method: method,
 				}
@@ -230,7 +298,7 @@ func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 
 			if e := cs.Err(); e != nil {
 				if errors.Is(e, mgo.ErrNotFound) {
-					p.log.Info("watch found nothing, retry later")
+					p.log.V(2).Info("watch found nothing, retry later")
 					time.Sleep(p.retryTimeout)
 					continue
 				}
