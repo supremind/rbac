@@ -1,16 +1,22 @@
-package authorizer_test
+package authorizer
 
 import (
+	"context"
+	"log"
+	"os"
 	"testing"
 
+	"github.com/go-logr/stdr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
-	. "github.com/houz42/rbac/internal/authorizer"
-	. "github.com/houz42/rbac/internal/grouping"
-	. "github.com/houz42/rbac/internal/permission"
+	"github.com/houz42/rbac/internal/grouping"
+	"github.com/houz42/rbac/internal/permission"
 	. "github.com/houz42/rbac/internal/testdata"
+	"github.com/houz42/rbac/persist/fake"
+	"github.com/houz42/rbac/persist/filter"
+	"github.com/houz42/rbac/types"
 	. "github.com/houz42/rbac/types"
 )
 
@@ -18,6 +24,12 @@ func TestGroupedPermission(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "grouped permission")
 }
+
+var logger = stdr.New(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
+
+var _ = BeforeSuite(func() {
+	stdr.SetVerbosity(4)
+})
 
 func loadRoleToArticlePolices(p Permission) {
 	for _, perm := range RoleToArticlePolices {
@@ -55,8 +67,17 @@ func loadUserToArticlePolices(p Permission) {
 	}
 }
 
+func newTestGrouping(name string) types.Grouping {
+	gp := filter.NewGroupingPersister(fake.NewGroupingPersister())
+	g, e := grouping.New(context.Background(), gp, logger.WithName(name))
+	Specify("create test grouping", func() {
+		Expect(e).To(Succeed())
+	})
+	return g
+}
+
 func newTestSubjectGrouping() Grouping {
-	g := NewFatGrouping()
+	g := newTestGrouping("subject")
 	for user, roles := range UserRoles {
 		for _, role := range roles {
 			user, role := user, role
@@ -69,7 +90,7 @@ func newTestSubjectGrouping() Grouping {
 }
 
 func newTestObjectGrouping() Grouping {
-	g := NewFatGrouping()
+	g := newTestGrouping("object")
 	for _, perm := range ObjectGroupings {
 		perm := perm
 		Specify("init policy is joined", func() {
@@ -79,6 +100,15 @@ func newTestObjectGrouping() Grouping {
 	return g
 }
 
+func newTestPermission(name string) types.Permission {
+	pp := filter.NewPermissionPersister(fake.NewPermissionPersister())
+	p, e := permission.New(context.Background(), pp, logger.WithName(name))
+	Specify("create test permission", func() {
+		Expect(e).To(Succeed())
+	})
+	return p
+}
+
 var subjectGroupedPermissions = []struct {
 	name string
 	ctor func() Permission
@@ -86,7 +116,7 @@ var subjectGroupedPermissions = []struct {
 	{
 		name: "subject grouped",
 		ctor: func() Permission {
-			p := NewSubjectGroupedPermission(newTestSubjectGrouping(), NewThinPermission())
+			p := newSubjectGroupedPermission(newTestSubjectGrouping(), newTestPermission("subject grouped"))
 			loadRoleToArticlePolices(p)
 			return p
 		},
@@ -94,7 +124,7 @@ var subjectGroupedPermissions = []struct {
 	{
 		name: "both grouped",
 		ctor: func() Permission {
-			p := NewBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), NewThinPermission())
+			p := newBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), newTestPermission("both grouped"))
 			loadRoleToArticlePolices(p)
 			return p
 		},
@@ -102,7 +132,7 @@ var subjectGroupedPermissions = []struct {
 	{
 		name: "subject grouped authorizer",
 		ctor: func() Permission {
-			p := NewAuthorizer(newTestSubjectGrouping(), nil, NewThinPermission())
+			p := New(newTestSubjectGrouping(), nil, newTestPermission("subject grouped authorizer"))
 			loadRoleToArticlePolices(p)
 			return p
 		},
@@ -116,7 +146,7 @@ var objectGroupedPermissions = []struct {
 	{
 		name: "object grouped",
 		ctor: func() Permission {
-			p := NewObjectGroupedPermission(newTestObjectGrouping(), NewThinPermission())
+			p := newObjectGroupedPermission(newTestObjectGrouping(), newTestPermission("object grouped"))
 			loadUserToCategoryPolices(p)
 			return p
 		},
@@ -124,7 +154,7 @@ var objectGroupedPermissions = []struct {
 	{
 		name: "both grouped",
 		ctor: func() Permission {
-			p := NewBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), NewThinPermission())
+			p := newBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), newTestPermission("both grouped"))
 			loadUserToCategoryPolices(p)
 			return p
 		},
@@ -132,7 +162,7 @@ var objectGroupedPermissions = []struct {
 	{
 		name: "object grouped authorizer",
 		ctor: func() Permission {
-			p := NewAuthorizer(nil, newTestObjectGrouping(), NewThinPermission())
+			p := New(nil, newTestObjectGrouping(), newTestPermission("object grouped authorizer"))
 			loadUserToCategoryPolices(p)
 			return p
 		},
@@ -146,7 +176,7 @@ var bothGroupedPermissions = []struct {
 	{
 		name: "simple permission",
 		ctor: func() Permission {
-			p := NewBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), NewThinPermission())
+			p := newBothGroupedPermission(newTestSubjectGrouping(), newTestObjectGrouping(), newTestPermission("simple permission"))
 			loadUserToArticlePolices(p)
 			loadRoleToArticlePolices(p)
 			loadUserToCategoryPolices(p)

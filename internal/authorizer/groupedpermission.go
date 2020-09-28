@@ -1,7 +1,6 @@
 package authorizer
 
 import (
-	"github.com/houz42/rbac/internal/permission"
 	"github.com/houz42/rbac/types"
 )
 
@@ -24,16 +23,13 @@ type bothGroupedPermissioner interface {
 	objectGroupedPermissioner
 }
 
+// subjectGroupedPermission makes the permission know user-role relationships and make decisions with them
 type subjectGroupedPermission struct {
 	sg types.Grouping
 	types.Permission
 }
 
-// NewSubjectGroupedPermission makes the permission know user-role relationships and make decisions with them
-func NewSubjectGroupedPermission(sg types.Grouping, p types.Permission) *subjectGroupedPermission {
-	if p == nil {
-		p = permission.NewThinPermission()
-	}
+func newSubjectGroupedPermission(sg types.Grouping, p types.Permission) *subjectGroupedPermission {
 	return &subjectGroupedPermission{
 		sg:         sg,
 		Permission: p,
@@ -127,16 +123,13 @@ func (p *subjectGroupedPermission) directPermissionsFor(sub types.Subject) (map[
 	return p.Permission.PermissionsFor(sub)
 }
 
+// objectGroupedPermission makes the permission knows article-category relationships and make decions with them
 type objectGroupedPermission struct {
 	og types.Grouping
 	types.Permission
 }
 
-// NewObjectGroupedPermission makes the permission knows article-category relationships and make decions with them
-func NewObjectGroupedPermission(og types.Grouping, p types.Permission) *objectGroupedPermission {
-	if p == nil {
-		p = permission.NewThinPermission()
-	}
+func newObjectGroupedPermission(og types.Grouping, p types.Permission) *objectGroupedPermission {
 	return &objectGroupedPermission{
 		og:         og,
 		Permission: p,
@@ -233,6 +226,8 @@ func (p *objectGroupedPermission) directPermissionsOn(obj types.Object) (map[typ
 	return p.Permission.PermissionsOn(obj)
 }
 
+// bothGroupedPermission makes the permission know the relationships between users and roles,
+// as well as articles and categories, and make decisions with them
 type bothGroupedPermission struct {
 	sg types.Grouping
 	og types.Grouping
@@ -241,17 +236,12 @@ type bothGroupedPermission struct {
 	types.Permission
 }
 
-// NewBothGroupedPermission make the permission know the relationships between users ans roles,
-// as well as articles and categories, and make decisions with them
-func NewBothGroupedPermission(sg, og types.Grouping, p types.Permission) *bothGroupedPermission {
-	if p == nil {
-		p = permission.NewThinPermission()
-	}
+func newBothGroupedPermission(sg, og types.Grouping, p types.Permission) *bothGroupedPermission {
 	return &bothGroupedPermission{
 		sg:         sg,
 		og:         og,
-		sp:         NewSubjectGroupedPermission(sg, p),
-		op:         NewObjectGroupedPermission(og, p),
+		sp:         newSubjectGroupedPermission(sg, p),
+		op:         newObjectGroupedPermission(og, p),
 		Permission: p,
 	}
 }
