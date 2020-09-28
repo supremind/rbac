@@ -1,18 +1,21 @@
-package grouping_test
+package grouping
 
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"strconv"
 	"testing"
 
+	"github.com/go-logr/stdr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
-	. "github.com/houz42/rbac/internal/grouping"
 	. "github.com/houz42/rbac/internal/testdata"
-	. "github.com/houz42/rbac/persist/fake"
+	"github.com/houz42/rbac/persist/fake"
+	"github.com/houz42/rbac/persist/filter"
 	. "github.com/houz42/rbac/types"
 )
 
@@ -33,24 +36,28 @@ var _ = Describe("grouping implementation", func() {
 	}{
 		{
 			name: "slim",
-			g:    NewSlimGrouping(),
+			g:    newSlimGrouping(),
 		},
 		{
 			name: "fat",
-			g:    NewFatGrouping(),
+			g:    newFatGrouping(),
 		},
 		{
 			name: "synced fat",
-			g:    NewSyncedGrouping(NewFatGrouping()),
+			g:    newSyncedGrouping(newFatGrouping()),
 		},
 		{
 			name: "synced slim",
-			g:    NewSyncedGrouping(NewSlimGrouping()),
+			g:    newSyncedGrouping(newSlimGrouping()),
 		},
 		{
 			name: "fake persisted",
 			g: func() Grouping {
-				g, e := NewPersistedGrouping(context.Background(), nil, NewGroupingPersister())
+				logger := stdr.New(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
+				stdr.SetVerbosity(4)
+
+				gp := filter.NewGroupingPersister(fake.NewGroupingPersister())
+				g, e := newPersistedGrouping(context.Background(), newSyncedGrouping(newFatGrouping()), gp, logger)
 				Specify("fake persisted grouping is created", func() {
 					Expect(e).To(Succeed())
 				})

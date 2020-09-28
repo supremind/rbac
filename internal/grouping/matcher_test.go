@@ -1,4 +1,4 @@
-package grouping_test
+package grouping
 
 import (
 	"fmt"

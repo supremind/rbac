@@ -8,17 +8,13 @@ import (
 
 var _ types.Grouping = (*syncedGrouping)(nil)
 
-// syncedGrouping is safe in concurrent usages
+// syncedGrouping makes the inner grouping be safe in concurrent usages
 type syncedGrouping struct {
 	g types.Grouping
 	sync.RWMutex
 }
 
-// NewSyncedGrouping makes the given Grouping be safe in concurrent usages
-func NewSyncedGrouping(g types.Grouping) *syncedGrouping {
-	if g == nil {
-		g = NewFatGrouping()
-	}
+func newSyncedGrouping(g types.Grouping) *syncedGrouping {
 	return &syncedGrouping{
 		g: g,
 	}

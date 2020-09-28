@@ -4,24 +4,19 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/houz42/rbac/internal/persist/filter"
+	"github.com/go-logr/logr"
 	"github.com/houz42/rbac/types"
 )
 
+// persistedGrouping persists grouping roles of the inner grouping
 type persistedGrouping struct {
 	persist types.GroupingPersister
 	types.Grouping
+	log logr.Logger
 }
 
-// NewPersistedGrouping creates a persisted Grouping based on given inner Grouping, and makes sure it is synced
-func NewPersistedGrouping(ctx context.Context, inner types.Grouping, persist types.GroupingPersister) (*persistedGrouping, error) {
-	if inner == nil {
-		inner = NewFatGrouping()
-	}
-	inner = NewSyncedGrouping(inner)
-
-	persist = filter.NewGroupingPersisterFilter(persist)
-	g := &persistedGrouping{persist: persist, Grouping: inner}
+func newPersistedGrouping(ctx context.Context, inner types.Grouping, persist types.GroupingPersister, l logr.Logger) (*persistedGrouping, error) {
+	g := &persistedGrouping{persist: persist, Grouping: inner, log: l}
 	if e := g.loadPersisted(); e != nil {
 		return nil, e
 	}
@@ -56,7 +51,7 @@ func (g *persistedGrouping) startWatching(ctx context.Context) error {
 			select {
 			case change := <-changes:
 				if e := g.coordinateChange(change); e != nil {
-					// todo
+					g.log.Error(e, "coordinate grouping changes")
 				}
 			case <-ctx.Done():
 				return
