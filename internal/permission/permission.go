@@ -8,8 +8,8 @@ import (
 )
 
 // New creates a concurent safe, persisted permission
-func New(ctx context.Context, p types.PermissionPersister, l logr.Logger) (types.Permission, error) {
-	perm, e := newPersistedPermission(ctx, newThinPermission(), p, l)
+func New(ctx context.Context, pp types.PermissionPersister, l logr.Logger) (types.Permission, error) {
+	perm, e := newPersistedPermission(ctx, newThinPermission(), pp, l)
 	if e != nil {
 		return nil, e
 	}
