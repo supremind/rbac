@@ -39,13 +39,33 @@ func (p *syncedPermission) Shall(sub types.Subject, obj types.Object, act types.
 func (p *syncedPermission) PermissionsOn(obj types.Object) (map[types.Subject]types.Action, error) {
 	p.RLock()
 	defer p.RUnlock()
-	return p.p.PermissionsOn(obj)
+
+	perms, e := p.p.PermissionsOn(obj)
+	if e != nil {
+		return nil, e
+	}
+
+	res := make(map[types.Subject]types.Action, len(perms))
+	for sub, act := range perms {
+		res[sub] = act
+	}
+	return res, nil
 }
 
 func (p *syncedPermission) PermissionsFor(sub types.Subject) (map[types.Object]types.Action, error) {
 	p.RLock()
 	defer p.RUnlock()
-	return p.p.PermissionsFor(sub)
+
+	perms, e := p.p.PermissionsFor(sub)
+	if e != nil {
+		return nil, e
+	}
+
+	res := make(map[types.Object]types.Action, len(perms))
+	for obj, act := range perms {
+		res[obj] = act
+	}
+	return res, nil
 }
 
 func (p *syncedPermission) PermittedActions(sub types.Subject, obj types.Object) (types.Action, error) {
