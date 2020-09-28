@@ -8,17 +8,13 @@ import (
 
 var _ types.Grouping = (*syncedGrouping)(nil)
 
-// syncedGrouping is safe in concurrent usages
+// syncedGrouping makes the inner grouping be safe in concurrent usages
 type syncedGrouping struct {
 	g types.Grouping
 	sync.RWMutex
 }
 
-// NewSyncedGrouping makes the given Grouping be safe in concurrent usages
-func NewSyncedGrouping(g types.Grouping) *syncedGrouping {
-	if g == nil {
-		g = NewFatGrouping()
-	}
+func newSyncedGrouping(g types.Grouping) *syncedGrouping {
 	return &syncedGrouping{
 		g: g,
 	}
@@ -62,28 +58,64 @@ func (g *syncedGrouping) AllMembers() (map[types.Member]struct{}, error) {
 func (g *syncedGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.GroupsOf(ent)
+
+	groups, e := g.g.GroupsOf(ent)
+	if e != nil {
+		return nil, e
+	}
+	res := make(map[types.Group]struct{}, len(groups))
+	for grp := range groups {
+		res[grp] = struct{}{}
+	}
+	return res, nil
 }
 
 // MembersIn implements Grouping interface
 func (g *syncedGrouping) MembersIn(group types.Group) (map[types.Member]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.MembersIn(group)
+
+	members, e := g.g.MembersIn(group)
+	if e != nil {
+		return nil, e
+	}
+	res := make(map[types.Member]struct{}, len(members))
+	for mem := range members {
+		res[mem] = struct{}{}
+	}
+	return res, nil
 }
 
 //  ImmediateGroupsOf implements Grouping interface
 func (g *syncedGrouping) ImmediateGroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.ImmediateGroupsOf(ent)
+
+	groups, e := g.g.ImmediateGroupsOf(ent)
+	if e != nil {
+		return nil, e
+	}
+	res := make(map[types.Group]struct{}, len(groups))
+	for grp := range groups {
+		res[grp] = struct{}{}
+	}
+	return res, nil
 }
 
 // ImmediateEntitiesIn implements Grouping interface
 func (g *syncedGrouping) ImmediateEntitiesIn(group types.Group) (map[types.Entity]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.ImmediateEntitiesIn(group)
+
+	entities, e := g.g.ImmediateEntitiesIn(group)
+	if e != nil {
+		return nil, e
+	}
+	res := make(map[types.Entity]struct{}, len(entities))
+	for ent := range entities {
+		res[ent] = struct{}{}
+	}
+	return res, nil
 }
 
 // RemoveGroup implements Grouping interface

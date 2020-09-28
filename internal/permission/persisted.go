@@ -4,22 +4,23 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/houz42/rbac/internal/persist/filter"
+	"github.com/go-logr/logr"
+	"github.com/houz42/rbac/persist/filter"
 	"github.com/houz42/rbac/types"
 )
 
+// persistedPermission persists the permission polices with given persister, and makes sure it is synced
 type persistedPermission struct {
 	persist types.PermissionPersister
 	types.Permission
+	log logr.Logger
 }
 
-// NewPersistedPermission persists the permission polices with given persister, and makes sure it is synced
-func NewPersistedPermission(ctx context.Context, persist types.PermissionPersister) (*persistedPermission, error) {
-	persist = filter.NewPermissionPersisterFilter(persist)
-
+func newPersistedPermission(ctx context.Context, inner types.Permission, persist types.PermissionPersister, l logr.Logger) (*persistedPermission, error) {
 	p := &persistedPermission{
-		persist:    persist,
-		Permission: NewSyncedPermission(NewThinPermission()),
+		persist:    filter.NewPermissionPersister(persist),
+		Permission: newSyncedPermission(inner),
+		log:        l,
 	}
 
 	if e := p.loadPersisted(); e != nil {
@@ -57,7 +58,7 @@ func (p *persistedPermission) startWatching(ctx context.Context) error {
 			select {
 			case change := <-changes:
 				if e := p.coordinateChange(change); e != nil {
-					// todo: log and notify
+					p.log.Error(e, "coordinate permission changes")
 				}
 			case <-ctx.Done():
 				return

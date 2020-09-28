@@ -8,13 +8,13 @@ import (
 
 var _ types.Authorizer = (*syncedAuthorizer)(nil)
 
+// syncedAuthorizer makes the given authorizer be safe in concurrent usages
 type syncedAuthorizer struct {
 	sync.RWMutex
 	authz types.Authorizer
 }
 
-// NewSyncedAuthorizer makes the given DecisionMake be safe in concurrent usages
-func NewSyncedAuthorizer(authz types.Authorizer) *syncedAuthorizer {
+func newSyncedAuthorizer(authz types.Authorizer) *syncedAuthorizer {
 	return &syncedAuthorizer{authz: authz}
 }
 

@@ -7,9 +7,9 @@ type permissionPersisterFilter struct {
 	changes map[types.PermissionPolicyChange]struct{}
 }
 
-// NewPermissionPersisterFilter checks if the incoming changes are made by the inner persister itself,
+// NewPermissionPersister checks if the incoming changes are made by the inner persister itself,
 // and does not call it again if true
-func NewPermissionPersisterFilter(p types.PermissionPersister) *permissionPersisterFilter {
+func NewPermissionPersister(p types.PermissionPersister) *permissionPersisterFilter {
 	return &permissionPersisterFilter{
 		PermissionPersister: p,
 		changes:             make(map[types.PermissionPolicyChange]struct{}),

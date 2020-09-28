@@ -14,26 +14,32 @@ type authorizer struct {
 	uap map[types.User]map[types.Article]types.Action // cache user -> article -> action permissions
 }
 
-// NewAuthorizer creates a simple authorizer, which should not be used directly
-func NewAuthorizer(sg types.Grouping, og types.Grouping, p types.Permission) *authorizer {
+// New creates an authorizer
+func New(sg types.Grouping, og types.Grouping, p types.Permission) types.Authorizer {
 	if sg != nil && og != nil {
-		p = NewBothGroupedPermission(sg, og, p)
+		p = newBothGroupedPermission(sg, og, p)
 	} else if sg != nil && og == nil {
-		p = NewSubjectGroupedPermission(sg, p)
+		p = newSubjectGroupedPermission(sg, p)
 	} else if sg == nil && og != nil {
-		p = NewObjectGroupedPermission(og, p)
+		p = newObjectGroupedPermission(og, p)
 	}
 
-	return &authorizer{
+	authz := &authorizer{
 		sg:  sg,
 		og:  og,
 		p:   p,
 		uap: make(map[types.User]map[types.Article]types.Action),
 	}
+
+	return newSyncedAuthorizer(authz)
 }
 
 // SubjectJoin joins a user or a sub role to a role
 func (authz *authorizer) SubjectJoin(sub types.Subject, role types.Role) error {
+	if authz.sg == nil {
+		return types.ErrNoSubjectGrouping
+	}
+
 	if e := authz.sg.Join(sub, role); e != nil {
 		return e
 	}
@@ -62,6 +68,10 @@ func (authz *authorizer) SubjectJoin(sub types.Subject, role types.Role) error {
 
 // SubjectLeave removes a user or a sub role from a role
 func (authz *authorizer) SubjectLeave(sub types.Subject, role types.Role) error {
+	if authz.sg == nil {
+		return types.ErrNoSubjectGrouping
+	}
+
 	if e := authz.sg.Leave(sub, role); e != nil {
 		return e
 	}
@@ -90,6 +100,10 @@ func (authz *authorizer) SubjectLeave(sub types.Subject, role types.Role) error 
 
 // RemoveUser removes a user and all policies about it
 func (authz *authorizer) RemoveUser(user types.User) error {
+	if authz.sg == nil {
+		return types.ErrNoSubjectGrouping
+	}
+
 	sgp, ok := authz.p.(subjectGroupedPermissioner)
 	if !ok {
 		return types.ErrNoSubjectGrouping
@@ -112,6 +126,10 @@ func (authz *authorizer) RemoveUser(user types.User) error {
 
 // RemoveRole removes a role and all policies about it
 func (authz *authorizer) RemoveRole(role types.Role) error {
+	if authz.sg == nil {
+		return types.ErrNoSubjectGrouping
+	}
+
 	sgp, ok := authz.p.(subjectGroupedPermissioner)
 	if !ok {
 		return types.ErrNoSubjectGrouping
@@ -152,6 +170,10 @@ func (authz *authorizer) Subjects() types.GroupingReader {
 
 // ObjectJoin joins an article or a sub category to a category
 func (authz *authorizer) ObjectJoin(obj types.Object, cat types.Category) error {
+	if authz.og == nil {
+		return types.ErrNoObjectGrouping
+	}
+
 	if e := authz.og.Join(obj, cat); e != nil {
 		return e
 	}
@@ -179,6 +201,10 @@ func (authz *authorizer) ObjectJoin(obj types.Object, cat types.Category) error 
 
 // ObjectLeave removes an article or a sub category from a category
 func (authz *authorizer) ObjectLeave(obj types.Object, cat types.Category) error {
+	if authz.og == nil {
+		return types.ErrNoObjectGrouping
+	}
+
 	if e := authz.og.Leave(obj, cat); e != nil {
 		return e
 	}
@@ -207,6 +233,10 @@ func (authz *authorizer) ObjectLeave(obj types.Object, cat types.Category) error
 
 // RemoveArticle removes an article and all polices about it
 func (authz *authorizer) RemoveArticle(art types.Article) error {
+	if authz.og == nil {
+		return types.ErrNoObjectGrouping
+	}
+
 	ogp, ok := authz.p.(objectGroupedPermissioner)
 	if !ok {
 		return types.ErrNoObjectGrouping
@@ -235,6 +265,10 @@ func (authz *authorizer) RemoveArticle(art types.Article) error {
 
 // RemoveCategory removes a category and all polices about it
 func (authz *authorizer) RemoveCategory(cat types.Category) error {
+	if authz.og == nil {
+		return types.ErrNoObjectGrouping
+	}
+
 	ogp, ok := authz.p.(objectGroupedPermissioner)
 	if !ok {
 		return types.ErrNoObjectGrouping
@@ -341,20 +375,23 @@ func (authz *authorizer) Revoke(sub types.Subject, obj types.Object, act types.A
 		return e
 	}
 
-	removeByUser := func(user types.User) error {
-		if authz.uap[user] == nil {
+	var removeByUser func(types.User) error
+
+	switch obj.(type) {
+	case types.Article:
+		removeByUser = func(user types.User) error {
+			if authz.uap[user] == nil {
+				return nil
+			}
+			delete(authz.uap[user], obj.(types.Article))
 			return nil
 		}
 
-		switch obj.(type) {
-		case types.Article:
-			delete(authz.uap[user], obj.(types.Article))
-
-		case types.Category:
+	case types.Category:
+		removeByUser = func(user types.User) error {
 			if authz.og == nil {
 				return types.ErrNoObjectGrouping
 			}
-
 			arts, e := authz.og.MembersIn(obj.(types.Category))
 			if e != nil {
 				return e
@@ -362,12 +399,8 @@ func (authz *authorizer) Revoke(sub types.Subject, obj types.Object, act types.A
 			for art := range arts {
 				delete(authz.uap[user], art.(types.Article))
 			}
-
-		default:
-			return types.ErrInvlaidObject
+			return nil
 		}
-
-		return nil
 	}
 
 	switch sub.(type) {
@@ -399,7 +432,6 @@ func (authz *authorizer) Revoke(sub types.Subject, obj types.Object, act types.A
 
 // Shall subject to perform action on object
 func (authz *authorizer) Shall(sub types.Subject, obj types.Object, act types.Action) (bool, error) {
-
 	if user, ok := sub.(types.User); ok {
 		if art, ok := obj.(types.Article); ok {
 			if authz.uap[user] != nil {

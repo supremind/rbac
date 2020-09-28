@@ -16,9 +16,7 @@ type slimGrouping struct {
 	maxDepth int
 }
 
-// NewSlimGrouping creates a slimGrouping, which is a simplest implementation of Grouping interface.
-// it is not intended to be used directly
-func NewSlimGrouping() *slimGrouping {
+func newSlimGrouping() *slimGrouping {
 	return &slimGrouping{
 		parents:  make(map[types.Entity]map[types.Group]struct{}),
 		children: make(map[types.Group]map[types.Entity]struct{}),

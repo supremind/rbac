@@ -20,10 +20,9 @@ type fatGrouping struct {
 	allGroups  map[types.Group]struct{}
 }
 
-// NewFatGrouping creates a new grouping faster than slimGrouping, but still should not be used in production
-func NewFatGrouping() *fatGrouping {
+func newFatGrouping() *fatGrouping {
 	return &fatGrouping{
-		slim:       *NewSlimGrouping(),
+		slim:       *newSlimGrouping(),
 		groups:     make(map[types.Entity]map[types.Group]struct{}),
 		members:    make(map[types.Group]map[types.Member]struct{}),
 		allMembers: make(map[types.Member]struct{}),
