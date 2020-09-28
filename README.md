@@ -10,7 +10,8 @@ The rbac package provides [RBAC (Robe-Based Access Control)][rbac] in Golang. It
 - concurrent safe;
 - coordinated in real-time among replicas;
 - exported as very simple interfaces;
-- designed to use any persisted storage as backend
+- designed to use any persisted storage as backend;
+- limited to minimal external dependencies
 
 This project is still in developing, and is not considered production ready.
 
