@@ -1,18 +1,19 @@
-package permission_test
+package permission
 
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"testing"
 
+	"github.com/go-logr/stdr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
-	. "github.com/houz42/rbac/internal/authorizer"
-	. "github.com/houz42/rbac/internal/grouping"
-	. "github.com/houz42/rbac/internal/permission"
-	. "github.com/houz42/rbac/persist/fake"
+	"github.com/houz42/rbac/persist/fake"
+	"github.com/houz42/rbac/persist/filter"
 	. "github.com/houz42/rbac/types"
 )
 
@@ -37,34 +38,27 @@ var directPolices = []struct {
 }
 
 var _ = Describe("base permitter implementation", func() {
+
 	var permitters = []struct {
 		name string
 		p    Permission
 	}{
 		{
 			name: "thin",
-			p:    NewThinPermission(),
+			p:    newThinPermission(),
 		},
 		{
 			name: "synced",
-			p:    NewSyncedPermission(NewThinPermission()),
-		},
-		{
-			name: "subject grouped",
-			p:    NewSubjectGroupedPermission(NewFatGrouping(), NewThinPermission()),
-		},
-		{
-			name: "object grouped",
-			p:    NewObjectGroupedPermission(NewFatGrouping(), NewThinPermission()),
-		},
-		{
-			name: "both grouped",
-			p:    NewBothGroupedPermission(NewFatGrouping(), NewFatGrouping(), NewThinPermission()),
+			p:    newSyncedPermission(newThinPermission()),
 		},
 		{
 			name: "persisted",
 			p: func() Permission {
-				p, e := NewPersistedPermission(context.Background(), NewPermissionPersister())
+				logger := stdr.New(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
+				stdr.SetVerbosity(4)
+
+				pp := filter.NewPermissionPersister(fake.NewPermissionPersister())
+				p, e := newPersistedPermission(context.Background(), newThinPermission(), pp, logger)
 				Specify("persisted permission is created", func() {
 					Expect(e).To(Succeed())
 				})
