@@ -7,9 +7,9 @@ type groupingPersisterFilter struct {
 	changes map[types.GroupingPolicyChange]struct{}
 }
 
-// NewGroupingPersisterFilter checks if the incoming changes are made by the inner persister itself,
+// NewGroupingPersister checks if the incoming changes are made by the inner persister itself,
 // and does not call it again if true
-func NewGroupingPersisterFilter(p types.GroupingPersister) *groupingPersisterFilter {
+func NewGroupingPersister(p types.GroupingPersister) *groupingPersisterFilter {
 	return &groupingPersisterFilter{
 		GroupingPersister: p,
 		changes:           make(map[types.GroupingPolicyChange]struct{}),
