@@ -15,7 +15,6 @@ import (
 	"github.com/houz42/rbac/internal/permission"
 	. "github.com/houz42/rbac/internal/testdata"
 	"github.com/houz42/rbac/persist/fake"
-	"github.com/houz42/rbac/persist/filter"
 	"github.com/houz42/rbac/types"
 	. "github.com/houz42/rbac/types"
 )
@@ -68,8 +67,7 @@ func loadUserToArticlePolices(p Permission) {
 }
 
 func newTestGrouping(name string) types.Grouping {
-	gp := filter.NewGroupingPersister(fake.NewGroupingPersister())
-	g, e := grouping.New(context.Background(), gp, logger.WithName(name))
+	g, e := grouping.New(context.Background(), fake.NewGroupingPersister(), logger.WithName(name))
 	Specify("create test grouping", func() {
 		Expect(e).To(Succeed())
 	})
@@ -101,8 +99,7 @@ func newTestObjectGrouping() Grouping {
 }
 
 func newTestPermission(name string) types.Permission {
-	pp := filter.NewPermissionPersister(fake.NewPermissionPersister())
-	p, e := permission.New(context.Background(), pp, logger.WithName(name))
+	p, e := permission.New(context.Background(), fake.NewPermissionPersister(), logger.WithName(name))
 	Specify("create test permission", func() {
 		Expect(e).To(Succeed())
 	})

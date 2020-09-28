@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/houz42/rbac/persist/filter"
 	"github.com/houz42/rbac/types"
 )
 
@@ -17,8 +18,8 @@ type persistedPermission struct {
 
 func newPersistedPermission(ctx context.Context, inner types.Permission, persist types.PermissionPersister, l logr.Logger) (*persistedPermission, error) {
 	p := &persistedPermission{
-		persist:    persist,
-		Permission: inner,
+		persist:    filter.NewPermissionPersister(persist),
+		Permission: newSyncedPermission(inner),
 		log:        l,
 	}
 

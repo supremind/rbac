@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/houz42/rbac/persist/filter"
 	"github.com/houz42/rbac/types"
 )
 
@@ -16,7 +17,11 @@ type persistedGrouping struct {
 }
 
 func newPersistedGrouping(ctx context.Context, inner types.Grouping, persist types.GroupingPersister, l logr.Logger) (*persistedGrouping, error) {
-	g := &persistedGrouping{persist: persist, Grouping: inner, log: l}
+	g := &persistedGrouping{
+		persist:  filter.NewGroupingPersister(persist),
+		Grouping: newSyncedGrouping(inner),
+		log:      l,
+	}
 	if e := g.loadPersisted(); e != nil {
 		return nil, e
 	}

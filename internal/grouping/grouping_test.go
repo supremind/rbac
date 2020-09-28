@@ -15,7 +15,6 @@ import (
 
 	. "github.com/houz42/rbac/internal/testdata"
 	"github.com/houz42/rbac/persist/fake"
-	"github.com/houz42/rbac/persist/filter"
 	. "github.com/houz42/rbac/types"
 )
 
@@ -35,14 +34,6 @@ var _ = Describe("grouping implementation", func() {
 		g    Grouping
 	}{
 		{
-			name: "slim",
-			g:    newSlimGrouping(),
-		},
-		{
-			name: "fat",
-			g:    newFatGrouping(),
-		},
-		{
 			name: "synced fat",
 			g:    newSyncedGrouping(newFatGrouping()),
 		},
@@ -56,8 +47,7 @@ var _ = Describe("grouping implementation", func() {
 				logger := stdr.New(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
 				stdr.SetVerbosity(4)
 
-				gp := filter.NewGroupingPersister(fake.NewGroupingPersister())
-				g, e := newPersistedGrouping(context.Background(), newSyncedGrouping(newFatGrouping()), gp, logger)
+				g, e := newPersistedGrouping(context.Background(), newSyncedGrouping(newFatGrouping()), fake.NewGroupingPersister(), logger)
 				Specify("fake persisted grouping is created", func() {
 					Expect(e).To(Succeed())
 				})

@@ -13,7 +13,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/houz42/rbac/persist/fake"
-	"github.com/houz42/rbac/persist/filter"
 	. "github.com/houz42/rbac/types"
 )
 
@@ -44,10 +43,6 @@ var _ = Describe("base permitter implementation", func() {
 		p    Permission
 	}{
 		{
-			name: "thin",
-			p:    newThinPermission(),
-		},
-		{
 			name: "synced",
 			p:    newSyncedPermission(newThinPermission()),
 		},
@@ -57,8 +52,7 @@ var _ = Describe("base permitter implementation", func() {
 				logger := stdr.New(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
 				stdr.SetVerbosity(4)
 
-				pp := filter.NewPermissionPersister(fake.NewPermissionPersister())
-				p, e := newPersistedPermission(context.Background(), newThinPermission(), pp, logger)
+				p, e := newPersistedPermission(context.Background(), newSyncedPermission(newThinPermission()), fake.NewPermissionPersister(), logger)
 				Specify("persisted permission is created", func() {
 					Expect(e).To(Succeed())
 				})
