@@ -9,18 +9,20 @@ import (
 	"github.com/houz42/rbac/types"
 )
 
+var _ grouping = (*persistedGrouping)(nil)
+
 // persistedGrouping persists grouping roles of the inner grouping
 type persistedGrouping struct {
 	persist types.GroupingPersister
-	types.Grouping
+	grouping
 	log logr.Logger
 }
 
-func newPersistedGrouping(ctx context.Context, inner types.Grouping, persist types.GroupingPersister, l logr.Logger) (*persistedGrouping, error) {
+func newPersistedGrouping(ctx context.Context, persist types.GroupingPersister, l logr.Logger) (*persistedGrouping, error) {
 	g := &persistedGrouping{
 		persist:  filter.NewGroupingPersister(persist),
-		Grouping: inner,
 		log:      l,
+		grouping: newSyncedGrouping(newFatGrouping()),
 	}
 	if e := g.loadPersisted(); e != nil {
 		return nil, e
@@ -38,7 +40,7 @@ func (g *persistedGrouping) loadPersisted() error {
 		return e
 	}
 	for _, policy := range polices {
-		if e := g.Grouping.Join(policy.Entity, policy.Group); e != nil {
+		if e := g.grouping.Join(policy.Entity, policy.Group); e != nil {
 			return e
 		}
 	}
@@ -70,9 +72,9 @@ func (g *persistedGrouping) startWatching(ctx context.Context) error {
 func (g *persistedGrouping) coordinateChange(change types.GroupingPolicyChange) error {
 	switch change.Method {
 	case types.PersistInsert:
-		return g.Grouping.Join(change.Entity, change.Group)
+		return g.grouping.Join(change.Entity, change.Group)
 	case types.PersistDelete:
-		return g.Grouping.Leave(change.Entity, change.Group)
+		return g.grouping.Leave(change.Entity, change.Group)
 	}
 
 	return fmt.Errorf("%w: grouping persister changes: %s", types.ErrUnsupportedChange, change.Method)
@@ -82,7 +84,7 @@ func (g *persistedGrouping) Join(ent types.Entity, group types.Group) error {
 	if e := g.persist.Insert(ent, group); e != nil {
 		return e
 	}
-	return g.Grouping.Join(ent, group)
+	return g.grouping.Join(ent, group)
 }
 
 func (g *persistedGrouping) Leave(ent types.Entity, group types.Group) error {
@@ -90,11 +92,11 @@ func (g *persistedGrouping) Leave(ent types.Entity, group types.Group) error {
 		return e
 	}
 
-	return g.Grouping.Leave(ent, group)
+	return g.grouping.Leave(ent, group)
 }
 
 func (g *persistedGrouping) RemoveGroup(group types.Group) error {
-	members, e := g.Grouping.ImmediateEntitiesIn(group)
+	members, e := g.grouping.immediateEntitiesIn(group)
 	if e != nil {
 		return e
 	}
@@ -104,7 +106,7 @@ func (g *persistedGrouping) RemoveGroup(group types.Group) error {
 		}
 	}
 
-	groups, e := g.Grouping.ImmediateGroupsOf(group)
+	groups, e := g.grouping.immediateGroupsOf(group)
 	if e != nil {
 		return e
 	}
@@ -114,11 +116,11 @@ func (g *persistedGrouping) RemoveGroup(group types.Group) error {
 		}
 	}
 
-	return g.Grouping.RemoveGroup(group)
+	return g.grouping.RemoveGroup(group)
 }
 
 func (g *persistedGrouping) RemoveMember(m types.Member) error {
-	groups, e := g.Grouping.ImmediateGroupsOf(m)
+	groups, e := g.grouping.immediateGroupsOf(m)
 	if e != nil {
 		return e
 	}
@@ -128,5 +130,5 @@ func (g *persistedGrouping) RemoveMember(m types.Member) error {
 		}
 	}
 
-	return g.Grouping.RemoveMember(m)
+	return g.grouping.RemoveMember(m)
 }

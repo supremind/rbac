@@ -6,7 +6,7 @@ import (
 	"github.com/houz42/rbac/types"
 )
 
-var _ types.Grouping = (*slimGrouping)(nil)
+var _ grouping = (*slimGrouping)(nil)
 
 // slimGrouping is a simplest implementation of Grouping interface
 // it is used as a prototype of concept and baseline for testing
@@ -135,12 +135,12 @@ func (g *slimGrouping) MembersIn(grp types.Group) (map[types.Member]struct{}, er
 }
 
 // ImmediateGroupsOf implements Grouping interface
-func (g *slimGrouping) ImmediateGroupsOf(entity types.Entity) (map[types.Group]struct{}, error) {
+func (g *slimGrouping) immediateGroupsOf(entity types.Entity) (map[types.Group]struct{}, error) {
 	return g.parents[entity], nil
 }
 
 // ImmediateEntitiesIn implements Grouping interface
-func (g *slimGrouping) ImmediateEntitiesIn(grp types.Group) (map[types.Entity]struct{}, error) {
+func (g *slimGrouping) immediateEntitiesIn(grp types.Group) (map[types.Entity]struct{}, error) {
 	return g.children[grp], nil
 }
 

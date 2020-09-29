@@ -80,27 +80,6 @@ func (f *groupingPersisterFilter) Watch(ctx context.Context) (<-chan types.Group
 				out <- change
 			}
 		}
-
-		// for {
-		// 	select {
-		// 	case <-ctx.Done():
-		// 		return
-
-		// 	case change := <-in:
-		// 		f.RLock()
-		// 		_, ok := f.changes[change]
-		// 		f.RUnlock()
-
-		// 		if ok {
-		// 			f.Lock()
-		// 			delete(f.changes, change)
-		// 			f.Unlock()
-		// 		} else {
-		// 			out <- change
-		// 		}
-		// 	}
-		// }
-
 	}()
 
 	return out, nil

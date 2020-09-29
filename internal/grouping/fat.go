@@ -4,7 +4,7 @@ import (
 	"github.com/houz42/rbac/types"
 )
 
-var _ types.Grouping = (*fatGrouping)(nil)
+var _ grouping = (*fatGrouping)(nil)
 
 // fatGrouping caches more information to speed up querying
 // fatGrouping is faster on quering, and slower on removing comprared to slimGrouping
@@ -115,12 +115,12 @@ func (g *fatGrouping) MembersIn(group types.Group) (map[types.Member]struct{}, e
 	return g.groupMembers[group], nil
 }
 
-func (g *fatGrouping) ImmediateGroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
-	return g.slim.ImmediateGroupsOf(ent)
+func (g *fatGrouping) immediateGroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
+	return g.slim.immediateGroupsOf(ent)
 }
 
-func (g *fatGrouping) ImmediateEntitiesIn(group types.Group) (map[types.Entity]struct{}, error) {
-	return g.slim.ImmediateEntitiesIn(group)
+func (g *fatGrouping) immediateEntitiesIn(group types.Group) (map[types.Entity]struct{}, error) {
+	return g.slim.immediateEntitiesIn(group)
 }
 
 func (g *fatGrouping) RemoveGroup(group types.Group) error {

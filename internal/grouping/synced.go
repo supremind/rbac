@@ -6,15 +6,15 @@ import (
 	"github.com/houz42/rbac/types"
 )
 
-var _ types.Grouping = (*syncedGrouping)(nil)
+var _ grouping = (*syncedGrouping)(nil)
 
 // syncedGrouping makes the inner grouping be safe in concurrent usages
 type syncedGrouping struct {
-	g types.Grouping
+	g grouping
 	sync.RWMutex
 }
 
-func newSyncedGrouping(g types.Grouping) *syncedGrouping {
+func newSyncedGrouping(g grouping) *syncedGrouping {
 	return &syncedGrouping{
 		g: g,
 	}
@@ -105,11 +105,11 @@ func (g *syncedGrouping) MembersIn(group types.Group) (map[types.Member]struct{}
 }
 
 //  ImmediateGroupsOf implements Grouping interface
-func (g *syncedGrouping) ImmediateGroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
+func (g *syncedGrouping) immediateGroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
 
-	groups, e := g.g.ImmediateGroupsOf(ent)
+	groups, e := g.g.immediateGroupsOf(ent)
 	if e != nil {
 		return nil, e
 	}
@@ -121,11 +121,11 @@ func (g *syncedGrouping) ImmediateGroupsOf(ent types.Entity) (map[types.Group]st
 }
 
 // ImmediateEntitiesIn implements Grouping interface
-func (g *syncedGrouping) ImmediateEntitiesIn(group types.Group) (map[types.Entity]struct{}, error) {
+func (g *syncedGrouping) immediateEntitiesIn(group types.Group) (map[types.Entity]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
 
-	entities, e := g.g.ImmediateEntitiesIn(group)
+	entities, e := g.g.immediateEntitiesIn(group)
 	if e != nil {
 		return nil, e
 	}

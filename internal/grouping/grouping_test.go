@@ -31,23 +31,23 @@ var _ = Describe("grouping implementation", func() {
 
 	var groupers = []struct {
 		name string
-		g    func() Grouping
+		g    func() grouping
 	}{
 		{
 			name: "synced fat",
-			g:    func() Grouping { return newSyncedGrouping(newFatGrouping()) },
+			g:    func() grouping { return newSyncedGrouping(newFatGrouping()) },
 		},
 		{
 			name: "synced slim",
-			g:    func() Grouping { return newSyncedGrouping(newSlimGrouping()) },
+			g:    func() grouping { return newSyncedGrouping(newSlimGrouping()) },
 		},
 		{
 			name: "fake persisted",
-			g: func() Grouping {
+			g: func() grouping {
 				logger := stdr.New(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
 				stdr.SetVerbosity(4)
 
-				g, e := New(context.Background(), fake.NewGroupingPersister(), logger)
+				g, e := newPersistedGrouping(context.Background(), fake.NewGroupingPersister(), logger)
 				Expect(e).To(Succeed())
 				return g
 			},
@@ -58,7 +58,7 @@ var _ = Describe("grouping implementation", func() {
 		ctor := tg.g
 
 		Describe(tg.name, func() {
-			var g Grouping
+			var g grouping
 
 			BeforeEach(func() {
 				g = ctor()
@@ -214,7 +214,7 @@ var _ = Describe("grouping implementation", func() {
 
 				DescribeTable("querying direct subjects of role",
 					func(role Role, subjects []interface{}) {
-						Expect(g.ImmediateEntitiesIn(role)).To(haveExactKeys(subjects...))
+						Expect(g.immediateEntitiesIn(role)).To(haveExactKeys(subjects...))
 					},
 					Entry("users of role 3_0", Role("3_0"), []interface{}{User("0"), User("3"), User("6"), User("9")}),
 					Entry("sub roles of divisible", Role("divisible"), []interface{}{Role("2_0"), Role("3_0"), Role("5_0")}),
@@ -222,7 +222,7 @@ var _ = Describe("grouping implementation", func() {
 
 				DescribeTable("querying direct roles of subject",
 					func(ent Entity, roles []interface{}) {
-						Expect(g.ImmediateGroupsOf(ent)).To(haveExactKeys(roles...))
+						Expect(g.immediateGroupsOf(ent)).To(haveExactKeys(roles...))
 					},
 					Entry("roles of user 9", User("9"), []interface{}{Role("2_1"), Role("3_0"), Role("5_4")}),
 				)

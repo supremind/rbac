@@ -26,12 +26,6 @@ type GroupingReader interface {
 
 	// GroupsOf returns all groups the member belongs to
 	GroupsOf(Member) (map[Group]struct{}, error)
-
-	// ImmediateEntitiesIn returns Entities immediately belongs to Group
-	ImmediateEntitiesIn(Group) (map[Entity]struct{}, error)
-
-	// ImmediateGroupsOf returns groups the Entity immediately belongs to
-	ImmediateGroupsOf(Entity) (map[Group]struct{}, error)
 }
 
 // GroupingWriter defines methods to create, update, or remove grouping assignment polices
