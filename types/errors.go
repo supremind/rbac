@@ -13,6 +13,6 @@ var (
 	ErrInvlaidObject     = errors.New("invalid object, it should be an Article or Category")
 	ErrNoSubjectGrouping = errors.New("subject grouping is not configured")
 	ErrNoObjectGrouping  = errors.New("object grouping is not used")
-	ErrUnsupportedChange = errors.New("persister changes in a way used")
+	ErrUnsupportedChange = errors.New("persister changes in a way unsupported")
 	ErrUnknownAction     = errors.New("unknown action")
 )

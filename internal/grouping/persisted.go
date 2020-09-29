@@ -19,7 +19,7 @@ type persistedGrouping struct {
 func newPersistedGrouping(ctx context.Context, inner types.Grouping, persist types.GroupingPersister, l logr.Logger) (*persistedGrouping, error) {
 	g := &persistedGrouping{
 		persist:  filter.NewGroupingPersister(persist),
-		Grouping: newSyncedGrouping(inner),
+		Grouping: inner,
 		log:      l,
 	}
 	if e := g.loadPersisted(); e != nil {
@@ -72,9 +72,7 @@ func (g *persistedGrouping) coordinateChange(change types.GroupingPolicyChange) 
 	case types.PersistInsert:
 		return g.Grouping.Join(change.Entity, change.Group)
 	case types.PersistDelete:
-		if e := g.Grouping.Leave(change.Entity, change.Group); e != nil {
-			return e
-		}
+		return g.Grouping.Leave(change.Entity, change.Group)
 	}
 
 	return fmt.Errorf("%w: grouping persister changes: %s", types.ErrUnsupportedChange, change.Method)
@@ -101,7 +99,7 @@ func (g *persistedGrouping) RemoveGroup(group types.Group) error {
 		return e
 	}
 	for member := range members {
-		if e := g.Leave(member, group); e != nil {
+		if e := g.persist.Remove(member, group); e != nil {
 			return e
 		}
 	}
@@ -111,7 +109,7 @@ func (g *persistedGrouping) RemoveGroup(group types.Group) error {
 		return e
 	}
 	for super := range groups {
-		if e := g.Leave(group, super); e != nil {
+		if e := g.persist.Remove(group, super); e != nil {
 			return e
 		}
 	}
@@ -125,7 +123,7 @@ func (g *persistedGrouping) RemoveMember(m types.Member) error {
 		return e
 	}
 	for group := range groups {
-		if e := g.Leave(m, group); e != nil {
+		if e := g.persist.Remove(m, group); e != nil {
 			return e
 		}
 	}

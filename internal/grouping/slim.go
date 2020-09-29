@@ -90,7 +90,11 @@ func (g *slimGrouping) AllMembers() (map[types.Member]struct{}, error) {
 }
 
 // GroupsOf implements Grouping interface
-func (g *slimGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
+func (g *slimGrouping) GroupsOf(mem types.Member) (map[types.Group]struct{}, error) {
+	return g.groupsOf(mem)
+}
+
+func (g *slimGrouping) groupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
 	ancients := make(map[types.Group]struct{})
 
 	var query func(entity types.Entity, depth int)

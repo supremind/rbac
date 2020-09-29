@@ -2,6 +2,7 @@ package fake
 
 import (
 	"context"
+	"sync"
 
 	"github.com/houz42/rbac/types"
 )
@@ -9,6 +10,7 @@ import (
 type groupingPersister struct {
 	policies map[types.Entity]map[types.Group]struct{}
 	changes  chan types.GroupingPolicyChange
+	sync.RWMutex
 }
 
 // NewGroupingPersister returns a fake grouping persister which should not be used in real works
@@ -20,6 +22,9 @@ func NewGroupingPersister() *groupingPersister {
 }
 
 func (p *groupingPersister) Insert(ent types.Entity, group types.Group) error {
+	p.Lock()
+	defer p.Unlock()
+
 	if p.policies[ent] != nil {
 		if _, ok := p.policies[ent][group]; ok {
 			return types.ErrAlreadyExists
@@ -45,6 +50,9 @@ func (p *groupingPersister) Insert(ent types.Entity, group types.Group) error {
 }
 
 func (p *groupingPersister) Remove(ent types.Entity, group types.Group) error {
+	p.Lock()
+	defer p.Unlock()
+
 	if p.policies[ent] == nil {
 		return types.ErrNotFound
 	}
@@ -68,6 +76,9 @@ func (p *groupingPersister) Remove(ent types.Entity, group types.Group) error {
 }
 
 func (p *groupingPersister) List() ([]types.GroupingPolicy, error) {
+	p.RLock()
+	defer p.RUnlock()
+
 	polices := make([]types.GroupingPolicy, 0, len(p.policies))
 	for ent, groups := range p.policies {
 		for group := range groups {
@@ -79,6 +90,9 @@ func (p *groupingPersister) List() ([]types.GroupingPolicy, error) {
 }
 
 func (p *groupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPolicyChange, error) {
+	p.Lock()
+	defer p.Unlock()
+
 	p.changes = make(chan types.GroupingPolicyChange)
 	return p.changes, nil
 }

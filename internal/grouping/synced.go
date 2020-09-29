@@ -44,22 +44,40 @@ func (g *syncedGrouping) IsIn(member types.Member, group types.Group) (bool, err
 func (g *syncedGrouping) AllGroups() (map[types.Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.AllGroups()
+
+	groups, e := g.g.AllGroups()
+	if e != nil {
+		return nil, e
+	}
+	res := make(map[types.Group]struct{}, len(groups))
+	for grp := range groups {
+		res[grp] = struct{}{}
+	}
+	return res, nil
 }
 
 // AllMembers implements Grouping interface
 func (g *syncedGrouping) AllMembers() (map[types.Member]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.AllMembers()
+
+	members, e := g.g.AllMembers()
+	if e != nil {
+		return nil, e
+	}
+	res := make(map[types.Member]struct{}, len(members))
+	for mem := range members {
+		res[mem] = struct{}{}
+	}
+	return res, nil
 }
 
 // GroupsOf implements Grouping interface
-func (g *syncedGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
+func (g *syncedGrouping) GroupsOf(mem types.Member) (map[types.Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
 
-	groups, e := g.g.GroupsOf(ent)
+	groups, e := g.g.GroupsOf(mem)
 	if e != nil {
 		return nil, e
 	}
