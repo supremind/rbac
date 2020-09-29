@@ -11,10 +11,8 @@ var _ types.Grouping = (*fatGrouping)(nil)
 type fatGrouping struct {
 	slim slimGrouping // no sense to use another implementation
 
-	// entity => all groups it belongs to
-	groups map[types.Entity]map[types.Group]struct{}
-	// group => all members belongs to it
-	members map[types.Group]map[types.Member]struct{}
+	memberGroups map[types.Member]map[types.Group]struct{}
+	groupMembers map[types.Group]map[types.Member]struct{}
 
 	allMembers map[types.Member]struct{}
 	allGroups  map[types.Group]struct{}
@@ -22,11 +20,11 @@ type fatGrouping struct {
 
 func newFatGrouping() *fatGrouping {
 	return &fatGrouping{
-		slim:       *newSlimGrouping(),
-		groups:     make(map[types.Entity]map[types.Group]struct{}),
-		members:    make(map[types.Group]map[types.Member]struct{}),
-		allMembers: make(map[types.Member]struct{}),
-		allGroups:  make(map[types.Group]struct{}),
+		slim:         *newSlimGrouping(),
+		memberGroups: make(map[types.Member]map[types.Group]struct{}),
+		groupMembers: make(map[types.Group]map[types.Member]struct{}),
+		allMembers:   make(map[types.Member]struct{}),
+		allGroups:    make(map[types.Group]struct{}),
 	}
 }
 
@@ -35,27 +33,29 @@ func (g *fatGrouping) Join(ent types.Entity, group types.Group) error {
 		return e
 	}
 
+	if _, ok := g.groupMembers[group]; !ok {
+		g.groupMembers[group] = make(map[types.Member]struct{})
+	}
 	g.allGroups[group] = struct{}{}
-	if member, ok := ent.(types.Member); ok {
+
+	switch ent.(type) {
+	case types.Member:
+		member := ent.(types.Member)
+		if _, ok := g.memberGroups[member]; !ok {
+			g.memberGroups[member] = make(map[types.Group]struct{})
+		}
 		g.allMembers[member] = struct{}{}
-	}
 
-	if g.groups[ent] == nil {
-		g.groups[ent] = make(map[types.Group]struct{})
-	}
-	g.groups[ent][group] = struct{}{}
-	for rr := range g.groups[group] {
-		g.groups[ent][rr] = struct{}{}
-	}
+		g.memberGroups[member][group] = struct{}{}
+		g.groupMembers[group][member] = struct{}{}
 
-	if g.members[group] == nil {
-		g.members[group] = make(map[types.Member]struct{})
-	}
-	if member, ok := ent.(types.Member); ok {
-		g.members[group][member] = struct{}{}
-	} else {
-		for u := range g.members[ent.(types.Group)] {
-			g.members[group][u] = struct{}{}
+	case types.Group:
+		subGroup := ent.(types.Group)
+		g.allGroups[subGroup] = struct{}{}
+
+		for member := range g.groupMembers[subGroup] {
+			g.memberGroups[member][group] = struct{}{}
+			g.groupMembers[group][member] = struct{}{}
 		}
 	}
 
@@ -63,21 +63,36 @@ func (g *fatGrouping) Join(ent types.Entity, group types.Group) error {
 }
 
 func (g *fatGrouping) Leave(ent types.Entity, group types.Group) error {
-	if e := g.slim.Leave(ent, group); e != nil {
-		return e
+
+	switch ent.(type) {
+	case types.Member:
+		if e := g.slim.Leave(ent, group); e != nil {
+			return e
+		}
+
+		member := ent.(types.Member)
+		delete(g.memberGroups[member], group)
+		delete(g.groupMembers[group], member)
+
+	case types.Group:
+		subGroup := ent.(types.Group)
+		members := g.groupMembers[subGroup]
+		if e := g.slim.Leave(ent, group); e != nil {
+			return e
+		}
+
+		for member := range members {
+			if e := g.rebuildOnRemoveRule(member); e != nil {
+				return e
+			}
+		}
 	}
 
-	if e := g.rebuildGroups(ent); e != nil {
-		return e
-	}
-	if e := g.rebuildMembers(group); e != nil {
-		return e
-	}
 	return nil
 }
 
 func (g *fatGrouping) IsIn(member types.Member, group types.Group) (bool, error) {
-	if members, ok := g.members[group]; ok {
+	if members, ok := g.groupMembers[group]; ok {
 		_, ok := members[member]
 		return ok, nil
 	}
@@ -92,12 +107,12 @@ func (g *fatGrouping) AllMembers() (map[types.Member]struct{}, error) {
 	return g.allMembers, nil
 }
 
-func (g *fatGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
-	return g.groups[ent], nil
+func (g *fatGrouping) GroupsOf(mem types.Member) (map[types.Group]struct{}, error) {
+	return g.memberGroups[mem], nil
 }
 
 func (g *fatGrouping) MembersIn(group types.Group) (map[types.Member]struct{}, error) {
-	return g.members[group], nil
+	return g.groupMembers[group], nil
 }
 
 func (g *fatGrouping) ImmediateGroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
@@ -109,30 +124,16 @@ func (g *fatGrouping) ImmediateEntitiesIn(group types.Group) (map[types.Entity]s
 }
 
 func (g *fatGrouping) RemoveGroup(group types.Group) error {
-	delete(g.allGroups, group)
-	delete(g.members, group)
-	delete(g.groups, group)
-
-	subs, e := g.ImmediateEntitiesIn(group)
-	if e != nil {
-		return e
-	}
-	groups, e := g.ImmediateGroupsOf(group)
-	if e != nil {
-		return e
-	}
-
 	if e := g.slim.RemoveGroup(group); e != nil {
 		return e
 	}
 
-	for ent := range subs {
-		if e := g.rebuildGroups(ent); e != nil {
-			return e
-		}
-	}
-	for group := range groups {
-		if e := g.rebuildMembers(group); e != nil {
+	members := g.groupMembers[group]
+	delete(g.allGroups, group)
+	delete(g.groupMembers, group)
+
+	for member := range members {
+		if e := g.rebuildOnRemoveRule(member); e != nil {
 			return e
 		}
 	}
@@ -141,86 +142,35 @@ func (g *fatGrouping) RemoveGroup(group types.Group) error {
 }
 
 func (g *fatGrouping) RemoveMember(member types.Member) error {
-	delete(g.allMembers, member)
-	delete(g.groups, member)
-
-	groups, e := g.ImmediateGroupsOf(member)
-	if e != nil {
-		return e
-	}
-
 	if e := g.slim.RemoveMember(member); e != nil {
 		return e
 	}
 
-	for group := range groups {
-		if e := g.rebuildMembers(group); e != nil {
-			return e
-		}
+	for group := range g.memberGroups[member] {
+		delete(g.groupMembers[group], member)
 	}
+	delete(g.allMembers, member)
+	delete(g.memberGroups, member)
 
 	return nil
 }
 
-func (g *fatGrouping) rebuildGroups(ent types.Entity) error {
-	// rebuild groups for entity
-	groups, e := g.ImmediateGroupsOf(ent)
-	if e != nil {
-		return e
-	}
-	g.groups[ent] = make(map[types.Group]struct{}, len(groups))
-	for group := range groups {
-		g.groups[ent][group] = struct{}{}
-		for rr := range g.groups[group] {
-			g.groups[ent][rr] = struct{}{}
-		}
-	}
-
-	if group, ok := ent.(types.Group); ok {
-		// rebuild groups for all subjects of ent
-		// fixme: some entity may be rebuilt more than once
-		subs, e := g.ImmediateEntitiesIn(group)
-		if e != nil {
-			return e
-		}
-		for ent := range subs {
-			if e := g.rebuildGroups(ent); e != nil {
-				return e
-			}
-		}
-	}
-
-	return nil
-}
-
-func (g *fatGrouping) rebuildMembers(group types.Group) error {
-	// rebuild members of group
-	subs, e := g.ImmediateEntitiesIn(group)
+func (g *fatGrouping) rebuildOnRemoveRule(mem types.Member) error {
+	groups, e := g.slim.groupsOf(mem)
 	if e != nil {
 		return e
 	}
 
-	g.members[group] = make(map[types.Member]struct{}, len(subs))
-	for ent := range subs {
-		if member, ok := ent.(types.Member); ok {
-			g.members[group][member] = struct{}{}
-		} else {
-			for member := range g.members[ent.(types.Group)] {
-				g.members[group][member] = struct{}{}
-			}
+	removing := make(map[types.Group]struct{}, len(g.memberGroups[mem])-len(groups))
+	for group := range g.memberGroups[mem] {
+		if _, ok := groups[group]; !ok {
+			removing[group] = struct{}{}
 		}
 	}
 
-	// rebuild members for all groups of group
-	// fixme: some group may be rebuilt more than once
-	groups, e := g.ImmediateGroupsOf(group)
-	if e != nil {
-		return e
-	}
-	for group := range groups {
-		if e := g.rebuildMembers(group); e != nil {
-			return e
-		}
+	g.memberGroups[mem] = groups
+	for group := range removing {
+		delete(g.groupMembers[group], mem)
 	}
 
 	return nil

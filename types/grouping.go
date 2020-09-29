@@ -24,8 +24,8 @@ type GroupingReader interface {
 	// MembersIn returns all members belongs to Group or sub Groups of Group
 	MembersIn(Group) (map[Member]struct{}, error)
 
-	// GroupsOf returns all groups the Entity or its Groups belongs to
-	GroupsOf(Entity) (map[Group]struct{}, error)
+	// GroupsOf returns all groups the member belongs to
+	GroupsOf(Member) (map[Group]struct{}, error)
 
 	// ImmediateEntitiesIn returns Entities immediately belongs to Group
 	ImmediateEntitiesIn(Group) (map[Entity]struct{}, error)
