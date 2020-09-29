@@ -80,9 +80,9 @@ var _ = Describe("base permitter implementation", func() {
 			})
 
 			DescribeTable("revoke permissions",
-				func(sub Subject, obj Object, act Action) {
-					Expect(p.Revoke(sub, obj, act)).To(Succeed())
-					Expect(p.Shall(sub, obj, act)).NotTo(BeTrue())
+				func(user User, art Article, act Action) {
+					Expect(p.Revoke(user, art, act)).To(Succeed())
+					Expect(p.Shall(user, art, act)).NotTo(BeTrue())
 				},
 				Entry("alan x operation overlord", User("alan"), Article("operation overlord"), Exec),
 				Entry("alan r operation overlord", User("alan"), Article("operation overlord"), Read),
