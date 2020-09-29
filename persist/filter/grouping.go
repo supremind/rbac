@@ -32,7 +32,7 @@ func (f *groupingPersisterFilter) Insert(ent types.Entity, group types.Group) er
 	}
 
 	f.changes[change] = struct{}{}
-	return f.Insert(ent, group)
+	return f.GroupingPersister.Insert(ent, group)
 }
 
 // Remove a policy from the persister
@@ -51,5 +51,5 @@ func (f *groupingPersisterFilter) Remove(ent types.Entity, group types.Group) er
 	}
 
 	f.changes[change] = struct{}{}
-	return f.Remove(ent, group)
+	return f.GroupingPersister.Remove(ent, group)
 }
