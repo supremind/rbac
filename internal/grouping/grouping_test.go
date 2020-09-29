@@ -84,8 +84,8 @@ var _ = Describe("grouping implementation", func() {
 			})
 
 			Context("querying roles of user", func() {
-				for user, roles := range UserRoles {
-					It(fmt.Sprintf("should know roles of %s", user), func() {
+				It("should know roles of user", func() {
+					for user, roles := range UserRoles {
 						Expect(g.GroupsOf(user)).To(haveExactKeys(func() []interface{} {
 							is := make([]interface{}, 0, len(roles))
 							for _, role := range roles {
@@ -93,8 +93,8 @@ var _ = Describe("grouping implementation", func() {
 							}
 							return is
 						}()...))
-					})
-				}
+					}
+				})
 			})
 
 			Context("querying users of role", func() {
