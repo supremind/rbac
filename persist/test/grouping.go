@@ -67,6 +67,7 @@ var GroupingCases = Describe("grouping persister", func() {
 				By(fmt.Sprintf("remove %v", policy))
 				Expect(gp.Remove(policy.Entity, policy.Group)).To(Succeed())
 			}
+
 		}()
 
 		By("observe changes in sequence")
