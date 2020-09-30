@@ -220,19 +220,14 @@ func (p *GroupingPersister) Remove(ent types.Entity, grp types.Group) error {
 	group := fromGroup(grp)
 	p.log.V(4).Info("remove group policy", "entity", entity, "group", group)
 
-	info, e := ss.UpsertId(entity.String(), bson.M{
+	e := ss.Update(bson.M{
+		"_id":    entity.String(),
+		"groups": bson.M{"$elemMatch": group},
+	}, bson.M{
 		"$pull":     bson.M{"groups": group},
 		"$addToSet": bson.M{"deleted": group},
 	})
-	if e != nil {
-		return parseMgoError(e)
-	}
-	p.log.V(6).Info("upsert to remove", "info", info)
-
-	if info.Updated != 1 {
-		return types.ErrNotFound
-	}
-	return nil
+	return parseMgoError(e)
 }
 
 // List all policies from the persister
@@ -323,24 +318,6 @@ func (p *GroupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 	return changes, nil
 }
 
-func (p *GroupingPersister) connectToWatch(token *bson.Raw) (*mgo.ChangeStream, func(), error) {
-	ss := p.copySession()
-	cs, e := ss.Watch(nil, mgo.ChangeStreamOptions{
-		FullDocument: mgo.UpdateLookup,
-		ResumeAfter:  token,
-	})
-	if e != nil {
-		return nil, nil, e
-	}
-
-	p.log.Info("watch mongo stream change")
-
-	return cs, func() {
-		cs.Close()
-		ss.closeSession()
-	}, nil
-}
-
 func (p *GroupingPersister) watch(ctx context.Context, cs *mgo.ChangeStream, changes chan<- types.GroupingPolicyChange) error {
 	for {
 		var event groupingChangeEvent
@@ -350,7 +327,7 @@ func (p *GroupingPersister) watch(ctx context.Context, cs *mgo.ChangeStream, cha
 
 			entity, e := types.ParseEntity(event.DocumentKey.ID)
 			if e != nil {
-				p.log.Error(e, "parse grouping policy do id", "id", event.DocumentKey.ID)
+				p.log.Error(e, "parse entity in change event")
 				continue
 			}
 			change.Entity = entity
@@ -374,7 +351,7 @@ func (p *GroupingPersister) watch(ctx context.Context, cs *mgo.ChangeStream, cha
 				}
 
 			default:
-				p.log.Info("unknown event", "operation type", event.OperationType, "event", event)
+				p.log.Info("unknown event", "operation type", event.OperationType)
 				continue
 			}
 

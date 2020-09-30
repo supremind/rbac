@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/go-logr/logr"
 	"github.com/houz42/rbac/types"
 )
@@ -23,6 +24,24 @@ func (c *collection) copySession() *collection {
 
 func (c *collection) closeSession() {
 	c.Database.Session.Close()
+}
+
+func (c *collection) connectToWatch(token *bson.Raw) (*mgo.ChangeStream, func(), error) {
+	ss := c.copySession()
+	cs, e := ss.Watch(nil, mgo.ChangeStreamOptions{
+		FullDocument: mgo.UpdateLookup,
+		ResumeAfter:  token,
+	})
+	if e != nil {
+		return nil, nil, e
+	}
+
+	c.log.Info("watch mongo stream change")
+
+	return cs, func() {
+		cs.Close()
+		ss.closeSession()
+	}, nil
 }
 
 type collectionOption func(*collection)
