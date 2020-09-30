@@ -8,7 +8,7 @@ type Permission interface {
 	// Revoke permission for subject to perform action on object
 	Revoke(Subject, Object, Action) error
 
-	// Shall subject to perform action on object
+	// Shall subject perform action on object
 	Shall(Subject, Object, Action) (bool, error)
 
 	// PermissionsOn object for all subjects

@@ -31,6 +31,13 @@ func loadUsersAndRoles() {
 	}
 }
 
+var RoleInRoles = map[types.Role][]types.Role{
+	types.Role("2_0"):  []types.Role{types.Role("even")},
+	types.Role("even"): []types.Role{types.Role("divisible")},
+	types.Role("3_0"):  []types.Role{types.Role("divisible")},
+	types.Role("5_0"):  []types.Role{types.Role("divisible")},
+}
+
 var ObjectGroupings = []struct {
 	Art types.Article
 	Cat types.Category

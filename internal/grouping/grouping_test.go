@@ -31,36 +31,37 @@ var _ = Describe("grouping implementation", func() {
 
 	var groupers = []struct {
 		name string
-		g    Grouping
+		g    func() grouping
 	}{
 		{
 			name: "synced fat",
-			g:    newSyncedGrouping(newFatGrouping()),
+			g:    func() grouping { return newSyncedGrouping(newFatGrouping()) },
 		},
 		{
 			name: "synced slim",
-			g:    newSyncedGrouping(newSlimGrouping()),
+			g:    func() grouping { return newSyncedGrouping(newSlimGrouping()) },
 		},
 		{
 			name: "fake persisted",
-			g: func() Grouping {
+			g: func() grouping {
 				logger := stdr.New(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
 				stdr.SetVerbosity(4)
 
-				g, e := newPersistedGrouping(context.Background(), newSyncedGrouping(newFatGrouping()), fake.NewGroupingPersister(), logger)
-				Specify("fake persisted grouping is created", func() {
-					Expect(e).To(Succeed())
-				})
+				g, e := newPersistedGrouping(context.Background(), fake.NewGroupingPersister(), logger)
+				Expect(e).To(Succeed())
 				return g
-			}(),
+			},
 		},
 	}
 
 	for _, tg := range groupers {
+		ctor := tg.g
+
 		Describe(tg.name, func() {
-			g := tg.g
+			var g grouping
 
 			BeforeEach(func() {
+				g = ctor()
 				for user, roles := range UserRoles {
 					for _, role := range roles {
 						Expect(g.Join(user, role)).To(Succeed())
@@ -83,44 +84,42 @@ var _ = Describe("grouping implementation", func() {
 				))
 			})
 
-			Context("querying roles of user", func() {
+			It("should know roles of user", func() {
 				for user, roles := range UserRoles {
-					It(fmt.Sprintf("should know roles of %s", user), func() {
-						Expect(g.GroupsOf(user)).To(haveExactKeys(func() []interface{} {
-							is := make([]interface{}, 0, len(roles))
-							for _, role := range roles {
-								is = append(is, role)
-							}
-							return is
-						}()...))
-					})
+					user, roles := user, roles
+					Expect(g.GroupsOf(user)).To(haveExactKeys(func() []interface{} {
+						is := make([]interface{}, 0, len(roles))
+						for _, role := range roles {
+							is = append(is, role)
+						}
+						return is
+					}()...))
 				}
 			})
 
-			Context("querying users of role", func() {
+			It("should know users of roles", func() {
 				for role, users := range RoleUsers {
-					It(fmt.Sprintf("should know users of %s", role), func() {
-						Expect(g.MembersIn(role)).To(haveExactKeys(func() []interface{} {
-							is := make([]interface{}, 0, len(users))
-							for _, user := range users {
-								is = append(is, user)
-							}
-							return is
-						}()...))
-					})
+					role, users := role, users
+					Expect(g.MembersIn(role)).To(haveExactKeys(func() []interface{} {
+						is := make([]interface{}, 0, len(users))
+						for _, user := range users {
+							is = append(is, user)
+						}
+						return is
+					}()...))
 				}
 			})
 
-			Context("checking user-role relationships", func() {
+			It("should know user is in role", func() {
 				for user, roles := range UserRoles {
 					for _, role := range roles {
 						user, role := user, role
-						It(fmt.Sprintf("should know %s is in %s", user, role), func() {
-							Expect(g.IsIn(user, role)).To(BeTrue())
-						})
+						Expect(g.IsIn(user, role)).To(BeTrue())
 					}
 				}
+			})
 
+			It("should know user is not in role", func() {
 				for _, tc := range []struct {
 					user User
 					role Role
@@ -132,9 +131,8 @@ var _ = Describe("grouping implementation", func() {
 					{user: User("6"), role: Role("3_1")},
 					{user: User("6"), role: Role("3_2")},
 				} {
-					It(fmt.Sprintf("should know %s is not in %s", tc.user, tc.role), func() {
-						Expect(g.IsIn(tc.user, tc.role)).To(BeFalse())
-					})
+					user, role := tc.user, tc.role
+					Expect(g.IsIn(user, role)).To(BeFalse())
 				}
 			})
 
@@ -151,7 +149,7 @@ var _ = Describe("grouping implementation", func() {
 			)
 
 			Describe("removing role", func() {
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					Expect(g.RemoveGroup(Role("3_2"))).To(Succeed())
 				})
 
@@ -179,7 +177,7 @@ var _ = Describe("grouping implementation", func() {
 			})
 
 			Describe("removing user", func() {
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					Expect(g.RemoveMember(User("2"))).To(Succeed())
 				})
 
@@ -207,7 +205,7 @@ var _ = Describe("grouping implementation", func() {
 			})
 
 			Describe("with role-to-role groupings", func() {
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					Expect(g.Join(Role("2_0"), Role("even"))).To(Succeed())
 					Expect(g.Join(Role("2_0"), Role("divisible"))).To(Succeed())
 					Expect(g.Join(Role("3_0"), Role("divisible"))).To(Succeed())
@@ -216,7 +214,7 @@ var _ = Describe("grouping implementation", func() {
 
 				DescribeTable("querying direct subjects of role",
 					func(role Role, subjects []interface{}) {
-						Expect(g.ImmediateEntitiesIn(role)).To(haveExactKeys(subjects...))
+						Expect(g.immediateEntitiesIn(role)).To(haveExactKeys(subjects...))
 					},
 					Entry("users of role 3_0", Role("3_0"), []interface{}{User("0"), User("3"), User("6"), User("9")}),
 					Entry("sub roles of divisible", Role("divisible"), []interface{}{Role("2_0"), Role("3_0"), Role("5_0")}),
@@ -224,7 +222,7 @@ var _ = Describe("grouping implementation", func() {
 
 				DescribeTable("querying direct roles of subject",
 					func(ent Entity, roles []interface{}) {
-						Expect(g.ImmediateGroupsOf(ent)).To(haveExactKeys(roles...))
+						Expect(g.immediateGroupsOf(ent)).To(haveExactKeys(roles...))
 					},
 					Entry("roles of user 9", User("9"), []interface{}{Role("2_1"), Role("3_0"), Role("5_4")}),
 				)
@@ -248,30 +246,24 @@ var _ = Describe("grouping implementation", func() {
 					Entry("roles of user 9", User("9"), []interface{}{Role("2_1"), Role("3_0"), Role("5_4"), Role("divisible")}),
 				)
 
-				Context("even numbers", func() {
+				Specify("even numbers", func() {
 					for _, u := range []int{0, 2, 4, 6, 8} {
 						user := User(strconv.Itoa(u))
-						Specify(fmt.Sprintf("%d is even", u), func() {
-							Expect(g.IsIn(user, Role("even"))).To(BeTrue())
-						})
+						Expect(g.IsIn(user, Role("even"))).To(BeTrue())
 					}
 				})
 
-				Context("divisible numbers", func() {
+				Specify("divisible numbers", func() {
 					for _, u := range []int{0, 2, 3, 4, 5, 6, 8, 9} {
 						user := User(strconv.Itoa(u))
-						Specify(fmt.Sprintf("%d is divisible", u), func() {
-							Expect(g.IsIn(user, Role("divisible"))).To(BeTrue())
-						})
+						Expect(g.IsIn(user, Role("divisible"))).To(BeTrue())
 					}
 				})
 
-				Context("indivisible numbers", func() {
+				Specify("indivisible numbers", func() {
 					for _, u := range []int{1, 7} {
 						user := User(strconv.Itoa(u))
-						Specify(fmt.Sprintf("%d is not divisible", u), func() {
-							Expect(g.IsIn(user, Role("divisible"))).To(BeFalse())
-						})
+						Expect(g.IsIn(user, Role("divisible"))).To(BeFalse())
 					}
 				})
 			})

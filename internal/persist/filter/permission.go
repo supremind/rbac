@@ -1,10 +1,16 @@
 package filter
 
-import "github.com/houz42/rbac/types"
+import (
+	"context"
+	"sync"
+
+	"github.com/houz42/rbac/types"
+)
 
 type permissionPersisterFilter struct {
 	types.PermissionPersister
 	changes map[types.PermissionPolicyChange]struct{}
+	sync.RWMutex
 }
 
 // NewPermissionPersister checks if the incoming changes are made by the inner persister itself,
@@ -27,12 +33,10 @@ func (f *permissionPersisterFilter) Insert(sub types.Subject, obj types.Object, 
 		Method: types.PersistInsert,
 	}
 
-	if _, ok := f.changes[change]; ok {
-		delete(f.changes, change)
-		return nil
-	}
-
+	f.Lock()
 	f.changes[change] = struct{}{}
+	f.Unlock()
+
 	return f.PermissionPersister.Insert(sub, obj, act)
 }
 
@@ -47,12 +51,10 @@ func (f *permissionPersisterFilter) Update(sub types.Subject, obj types.Object, 
 		Method: types.PersistUpdate,
 	}
 
-	if _, ok := f.changes[change]; ok {
-		delete(f.changes, change)
-		return nil
-	}
-
+	f.Lock()
 	f.changes[change] = struct{}{}
+	f.Unlock()
+
 	return f.PermissionPersister.Update(sub, obj, act)
 }
 
@@ -66,11 +68,38 @@ func (f *permissionPersisterFilter) Remove(sub types.Subject, obj types.Object) 
 		Method: types.PersistDelete,
 	}
 
-	if _, ok := f.changes[change]; ok {
-		delete(f.changes, change)
-		return nil
+	f.Lock()
+	f.changes[change] = struct{}{}
+	f.Unlock()
+
+	return f.PermissionPersister.Remove(sub, obj)
+}
+
+func (f *permissionPersisterFilter) Watch(ctx context.Context) (<-chan types.PermissionPolicyChange, error) {
+	in, e := f.PermissionPersister.Watch(ctx)
+	if e != nil {
+		return nil, e
 	}
 
-	f.changes[change] = struct{}{}
-	return f.PermissionPersister.Remove(sub, obj)
+	out := make(chan types.PermissionPolicyChange)
+
+	go func() {
+		defer close(out)
+
+		for change := range in {
+			f.RLock()
+			_, ok := f.changes[change]
+			f.RUnlock()
+
+			if ok {
+				f.Lock()
+				delete(f.changes, change)
+				f.Unlock()
+			} else {
+				out <- change
+			}
+		}
+	}()
+
+	return out, nil
 }

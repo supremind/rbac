@@ -6,15 +6,15 @@ import (
 	"github.com/houz42/rbac/types"
 )
 
-var _ types.Grouping = (*syncedGrouping)(nil)
+var _ grouping = (*syncedGrouping)(nil)
 
 // syncedGrouping makes the inner grouping be safe in concurrent usages
 type syncedGrouping struct {
-	g types.Grouping
+	g grouping
 	sync.RWMutex
 }
 
-func newSyncedGrouping(g types.Grouping) *syncedGrouping {
+func newSyncedGrouping(g grouping) *syncedGrouping {
 	return &syncedGrouping{
 		g: g,
 	}
@@ -44,22 +44,8 @@ func (g *syncedGrouping) IsIn(member types.Member, group types.Group) (bool, err
 func (g *syncedGrouping) AllGroups() (map[types.Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
-	return g.g.AllGroups()
-}
 
-// AllMembers implements Grouping interface
-func (g *syncedGrouping) AllMembers() (map[types.Member]struct{}, error) {
-	g.RLock()
-	defer g.RUnlock()
-	return g.g.AllMembers()
-}
-
-// GroupsOf implements Grouping interface
-func (g *syncedGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
-	g.RLock()
-	defer g.RUnlock()
-
-	groups, e := g.g.GroupsOf(ent)
+	groups, e := g.g.AllGroups()
 	if e != nil {
 		return nil, e
 	}
@@ -70,12 +56,12 @@ func (g *syncedGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, e
 	return res, nil
 }
 
-// MembersIn implements Grouping interface
-func (g *syncedGrouping) MembersIn(group types.Group) (map[types.Member]struct{}, error) {
+// AllMembers implements Grouping interface
+func (g *syncedGrouping) AllMembers() (map[types.Member]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
 
-	members, e := g.g.MembersIn(group)
+	members, e := g.g.AllMembers()
 	if e != nil {
 		return nil, e
 	}
@@ -86,12 +72,30 @@ func (g *syncedGrouping) MembersIn(group types.Group) (map[types.Member]struct{}
 	return res, nil
 }
 
-//  ImmediateGroupsOf implements Grouping interface
-func (g *syncedGrouping) ImmediateGroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
+// GroupsOf implements Grouping interface
+func (g *syncedGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
 
-	groups, e := g.g.ImmediateGroupsOf(ent)
+	// do not copy, innter fat grouping returns a copied map
+	return g.g.GroupsOf(ent)
+}
+
+// MembersIn implements Grouping interface
+func (g *syncedGrouping) MembersIn(group types.Group) (map[types.Member]struct{}, error) {
+	g.RLock()
+	defer g.RUnlock()
+
+	// do not copy, innter fat grouping returns a copied map
+	return g.g.MembersIn(group)
+}
+
+//  ImmediateGroupsOf implements Grouping interface
+func (g *syncedGrouping) immediateGroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
+	g.RLock()
+	defer g.RUnlock()
+
+	groups, e := g.g.immediateGroupsOf(ent)
 	if e != nil {
 		return nil, e
 	}
@@ -103,11 +107,11 @@ func (g *syncedGrouping) ImmediateGroupsOf(ent types.Entity) (map[types.Group]st
 }
 
 // ImmediateEntitiesIn implements Grouping interface
-func (g *syncedGrouping) ImmediateEntitiesIn(group types.Group) (map[types.Entity]struct{}, error) {
+func (g *syncedGrouping) immediateEntitiesIn(group types.Group) (map[types.Entity]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
 
-	entities, e := g.g.ImmediateEntitiesIn(group)
+	entities, e := g.g.immediateEntitiesIn(group)
 	if e != nil {
 		return nil, e
 	}

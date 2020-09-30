@@ -1,10 +1,16 @@
 package filter
 
-import "github.com/houz42/rbac/types"
+import (
+	"context"
+	"sync"
+
+	"github.com/houz42/rbac/types"
+)
 
 type groupingPersisterFilter struct {
 	types.GroupingPersister
 	changes map[types.GroupingPolicyChange]struct{}
+	sync.RWMutex
 }
 
 // NewGroupingPersister checks if the incoming changes are made by the inner persister itself,
@@ -26,13 +32,11 @@ func (f *groupingPersisterFilter) Insert(ent types.Entity, group types.Group) er
 		Method: types.PersistInsert,
 	}
 
-	if _, ok := f.changes[change]; ok {
-		delete(f.changes, change)
-		return nil
-	}
-
+	f.Lock()
 	f.changes[change] = struct{}{}
-	return f.Insert(ent, group)
+	f.Unlock()
+
+	return f.GroupingPersister.Insert(ent, group)
 }
 
 // Remove a policy from the persister
@@ -45,11 +49,38 @@ func (f *groupingPersisterFilter) Remove(ent types.Entity, group types.Group) er
 		Method: types.PersistDelete,
 	}
 
-	if _, ok := f.changes[change]; ok {
-		delete(f.changes, change)
-		return nil
+	f.Lock()
+	f.changes[change] = struct{}{}
+	f.Unlock()
+
+	return f.GroupingPersister.Remove(ent, group)
+}
+
+func (f *groupingPersisterFilter) Watch(ctx context.Context) (<-chan types.GroupingPolicyChange, error) {
+	in, e := f.GroupingPersister.Watch(ctx)
+	if e != nil {
+		return nil, e
 	}
 
-	f.changes[change] = struct{}{}
-	return f.Remove(ent, group)
+	out := make(chan types.GroupingPolicyChange)
+
+	go func() {
+		defer close(out)
+
+		for change := range in {
+			f.RLock()
+			_, ok := f.changes[change]
+			f.RUnlock()
+
+			if ok {
+				f.Lock()
+				delete(f.changes, change)
+				f.Unlock()
+			} else {
+				out <- change
+			}
+		}
+	}()
+
+	return out, nil
 }
