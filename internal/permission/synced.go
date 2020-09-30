@@ -30,10 +30,10 @@ func (p *syncedPermission) Revoke(sub types.Subject, obj types.Object, act types
 	return p.p.Revoke(sub, obj, act)
 }
 
-func (p *syncedPermission) Shall(user types.User, art types.Article, act types.Action) (bool, error) {
+func (p *syncedPermission) Shall(sub types.Subject, obj types.Object, act types.Action) (bool, error) {
 	p.RLock()
 	defer p.RUnlock()
-	return p.p.Shall(user, art, act)
+	return p.p.Shall(sub, obj, act)
 }
 
 func (p *syncedPermission) PermissionsOn(obj types.Object) (map[types.Subject]types.Action, error) {

@@ -55,9 +55,9 @@ func (p *thinPermission) Revoke(sub types.Subject, obj types.Object, act types.A
 	return nil
 }
 
-func (p *thinPermission) Shall(user types.User, art types.Article, act types.Action) (bool, error) {
-	if objs, ok := p.bySubject[user]; ok {
-		if acts, ok := objs[art]; ok {
+func (p *thinPermission) Shall(sub types.Subject, obj types.Object, act types.Action) (bool, error) {
+	if objs, ok := p.bySubject[sub]; ok {
+		if acts, ok := objs[obj]; ok {
 			return acts.Includes(act), nil
 		}
 	}
