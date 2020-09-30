@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/houz42/rbac/types"
 	. "github.com/onsi/ginkgo"
@@ -50,47 +51,51 @@ var PermissionCases = Describe("permission persister", func() {
 		})
 	}
 
-	It("insert and remove policies as expected", func() {
+	It("should do permission policy crud", func() {
+		By("insert and remvoe single policy as expected")
 		policy := insertPolices[0]
 		Expect(pp.Insert(policy.Subject, policy.Object, policy.Action)).To(Succeed())
 		Expect(pp.Insert(policy.Subject, policy.Object, policy.Action)).NotTo(Succeed())
 
 		Expect(pp.Remove(policy.Subject, policy.Object)).To(Succeed())
 		Expect(pp.Remove(policy.Subject, policy.Object)).NotTo(Succeed())
-	})
 
-	It("gen and receive changes", func() {
+		By("start watching permission changes")
 		w, e := pp.Watch(context.Background())
 		Expect(e).To(Succeed())
 
 		go func() {
 			defer GinkgoRecover()
 
+			By("insert, update, remove polices")
 			for _, policy := range insertPolices {
-				policy := policy
+				By(fmt.Sprintf("insert %v", policy))
 				Expect(pp.Insert(policy.Subject, policy.Object, policy.Action)).To(Succeed())
 			}
 
 			for _, policy := range updatePolices {
-				policy := policy
+				By(fmt.Sprintf("update %v", policy))
 				Expect(pp.Update(policy.Subject, policy.Object, policy.Action)).To(Succeed())
 			}
 
 			for _, policy := range removePolices {
-				policy := policy
+				By(fmt.Sprintf("remove %v", policy))
 				Expect(pp.Remove(policy.Subject, policy.Object)).To(Succeed())
 			}
 		}()
 
+		By("observe changes in sequence")
 		for _, change := range changes {
-			change := change
+			By(fmt.Sprintf("should observe %v", change))
 			got, ok := <-w
 			Expect(ok).To(BeTrue())
 			Expect(got).To(Equal(change))
 		}
 
+		By("after that, should not observe any change more")
 		Consistently(w).ShouldNot(Receive())
 
+		By("list all policies remained")
 		Expect(pp.List()).To(ConsistOf(
 			types.PermissionPolicy{Subject: types.User("alan"), Object: types.Article("project apollo"), Action: types.ReadWrite},
 			types.PermissionPolicy{Subject: types.User("alan"), Object: types.Article("manhattan project"), Action: types.Read},
@@ -98,4 +103,5 @@ var PermissionCases = Describe("permission persister", func() {
 			types.PermissionPolicy{Subject: types.Role("european"), Object: types.Article("opeartion markert garden"), Action: types.Exec},
 		))
 	})
+
 })
