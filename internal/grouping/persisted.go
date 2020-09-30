@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	"github.com/houz42/rbac/persist/filter"
+	"github.com/houz42/rbac/internal/persist/filter"
 	"github.com/houz42/rbac/types"
 )
 
