@@ -77,15 +77,8 @@ func (g *syncedGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, e
 	g.RLock()
 	defer g.RUnlock()
 
-	groups, e := g.g.GroupsOf(ent)
-	if e != nil {
-		return nil, e
-	}
-	res := make(map[types.Group]struct{}, len(groups))
-	for grp := range groups {
-		res[grp] = struct{}{}
-	}
-	return res, nil
+	// do not copy, innter fat grouping returns a copied map
+	return g.g.GroupsOf(ent)
 }
 
 // MembersIn implements Grouping interface
@@ -93,15 +86,8 @@ func (g *syncedGrouping) MembersIn(group types.Group) (map[types.Member]struct{}
 	g.RLock()
 	defer g.RUnlock()
 
-	members, e := g.g.MembersIn(group)
-	if e != nil {
-		return nil, e
-	}
-	res := make(map[types.Member]struct{}, len(members))
-	for mem := range members {
-		res[mem] = struct{}{}
-	}
-	return res, nil
+	// do not copy, innter fat grouping returns a copied map
+	return g.g.MembersIn(group)
 }
 
 //  ImmediateGroupsOf implements Grouping interface
