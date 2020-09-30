@@ -25,7 +25,7 @@ type GroupingReader interface {
 	MembersIn(Group) (map[Member]struct{}, error)
 
 	// GroupsOf returns all groups the member belongs to
-	GroupsOf(Member) (map[Group]struct{}, error)
+	GroupsOf(Entity) (map[Group]struct{}, error)
 }
 
 // GroupingWriter defines methods to create, update, or remove grouping assignment polices

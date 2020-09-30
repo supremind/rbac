@@ -1,6 +1,8 @@
 package grouping
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -17,14 +19,24 @@ var _ = Describe("fat grouping", func() {
 
 	g := newFatGrouping()
 
+	JustAfterEach(func() {
+		if CurrentGinkgoTestDescription().Failed {
+			fmt.Printf("Collecting diags just after failed test in %s\n", CurrentGinkgoTestDescription().TestText)
+			fmt.Printf("[member => group] %v\n", g.memberGroups)
+			fmt.Printf("[group => member] %v\n", g.groupMembers)
+			fmt.Printf("[group to upper] %v\n", g.groupUpward)
+			fmt.Printf("[group to lower] %v\n", g.groupDownward)
+		}
+	})
+
 	When("users joined init roles", func() {
 		BeforeEach(func() {
 			for user, roles := range UserRoles {
 				for _, role := range roles {
 					Expect(g.Join(user, role)).To(Succeed())
 
-					Expect(g.allGroups).To(HaveKey(role))
-					Expect(g.allMembers).To(HaveKey(user))
+					Expect(g.AllGroups()).To(HaveKey(role))
+					Expect(g.AllMembers()).To(HaveKey(user))
 					Expect(g.groupMembers).To(HaveKey(role))
 					Expect(g.groupMembers[role]).To(HaveKey(user))
 					Expect(g.memberGroups).To(HaveKey(user))
@@ -41,7 +53,7 @@ var _ = Describe("fat grouping", func() {
 				}
 				return res
 			}()
-			Expect(g.allMembers).To(haveExactKeys(users...))
+			Expect(g.AllMembers()).To(haveExactKeys(users...))
 			Expect(g.memberGroups).To(haveExactKeys(users...))
 		})
 
@@ -66,7 +78,7 @@ var _ = Describe("fat grouping", func() {
 				}
 				return res
 			}()
-			Expect(g.allGroups).To(haveExactKeys(roles...))
+			Expect(g.AllGroups()).To(haveExactKeys(roles...))
 			Expect(g.groupMembers).To(haveExactKeys(roles...))
 		})
 
@@ -89,8 +101,8 @@ var _ = Describe("fat grouping", func() {
 					for _, role := range roles {
 						Expect(g.Join(sub, role)).To(Succeed())
 
-						Expect(g.allGroups).To(HaveKey(role))
-						Expect(g.allGroups).To(HaveKey(sub))
+						Expect(g.AllGroups()).To(HaveKey(role))
+						Expect(g.AllGroups()).To(HaveKey(sub))
 					}
 				}
 			})
@@ -116,7 +128,7 @@ var _ = Describe("fat grouping", func() {
 			When("one role is removed", func() {
 				BeforeEach(func() {
 					Expect(g.RemoveGroup(types.Role("even"))).To(Succeed())
-					Expect(g.allGroups).ToNot(HaveKey(types.Role("even")))
+					Expect(g.AllGroups()).ToNot(HaveKey(types.Role("even")))
 				})
 
 				DescribeTable("does not know indirect role of effected users",
@@ -134,7 +146,7 @@ var _ = Describe("fat grouping", func() {
 			When("one user is removed", func() {
 				BeforeEach(func() {
 					Expect(g.RemoveMember(types.User("2"))).To(Succeed())
-					Expect(g.allMembers).NotTo(HaveKey(types.User("2")))
+					Expect(g.AllMembers()).NotTo(HaveKey(types.User("2")))
 					Expect(g.memberGroups).NotTo(HaveKey(types.User("2")))
 				})
 

@@ -73,11 +73,11 @@ func (g *syncedGrouping) AllMembers() (map[types.Member]struct{}, error) {
 }
 
 // GroupsOf implements Grouping interface
-func (g *syncedGrouping) GroupsOf(mem types.Member) (map[types.Group]struct{}, error) {
+func (g *syncedGrouping) GroupsOf(ent types.Entity) (map[types.Group]struct{}, error) {
 	g.RLock()
 	defer g.RUnlock()
 
-	groups, e := g.g.GroupsOf(mem)
+	groups, e := g.g.GroupsOf(ent)
 	if e != nil {
 		return nil, e
 	}
