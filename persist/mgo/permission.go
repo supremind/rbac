@@ -290,7 +290,6 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 
 				select {
 				case <-ctx.Done():
-					close(changes)
 					return ctx.Err()
 				case changes <- change:
 				}
@@ -317,6 +316,8 @@ func (p *PermissionPersister) Watch(ctx context.Context) (<-chan types.Permissio
 
 	changes := make(chan types.PermissionPolicyChange)
 	go func() {
+		defer close(changes)
+
 		for {
 			select {
 			case <-ctx.Done():

@@ -51,6 +51,10 @@ const (
 )
 
 func parseMgoError(e error) error {
+	if e == nil {
+		return nil
+	}
+
 	switch {
 	case errors.Is(e, mgo.ErrNotFound):
 		return types.ErrNotFound

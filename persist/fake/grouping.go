@@ -93,7 +93,7 @@ func (p *groupingPersister) Watch(ctx context.Context) (<-chan types.GroupingPol
 	p.Lock()
 	defer p.Unlock()
 
-	p.changes = make(chan types.GroupingPolicyChange)
+	p.changes = make(chan types.GroupingPolicyChange, 100)
 	return p.changes, nil
 }
 

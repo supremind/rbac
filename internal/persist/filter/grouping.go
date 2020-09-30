@@ -67,17 +67,28 @@ func (f *groupingPersisterFilter) Watch(ctx context.Context) (<-chan types.Group
 	go func() {
 		defer close(out)
 
-		for change := range in {
-			f.RLock()
-			_, ok := f.changes[change]
-			f.RUnlock()
+		for {
+			select {
 
-			if ok {
-				f.Lock()
-				delete(f.changes, change)
-				f.Unlock()
-			} else {
-				out <- change
+			case <-ctx.Done():
+				return
+			default:
+				change, ok := <-in
+				if !ok {
+					return
+				}
+
+				f.RLock()
+				_, ok = f.changes[change]
+				f.RUnlock()
+
+				if ok {
+					f.Lock()
+					delete(f.changes, change)
+					f.Unlock()
+				} else {
+					out <- change
+				}
 			}
 		}
 	}()

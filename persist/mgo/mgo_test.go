@@ -1,4 +1,4 @@
-package mgo_test
+package mgo
 
 import (
 	"log"
@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/houz42/rbac/persist/mgo"
 	. "github.com/houz42/rbac/persist/test"
 )
 
@@ -32,9 +31,9 @@ var _ = BeforeSuite(func() {
 	db = ss.DB(dbName)
 
 	logger := stdr.New(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
-	stdr.SetVerbosity(4)
+	stdr.SetVerbosity(6)
 
-	gp, e := NewGrouping(db.C("grouping"), WithLogger(logger.WithName("grouping persister")), SetRetryTimeout(1*time.Second))
+	gp, e := NewGrouping(db.C("grouping"), WithLogger(logger.WithName("grouping persister")), SetRetryTimeout(100*time.Microsecond))
 	Expect(e).To(Succeed())
 	TestGroupingPersister(gp)
 
