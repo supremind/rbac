@@ -342,12 +342,14 @@ func (p *GroupingPersister) watch(ctx context.Context, cs *mgo.ChangeStream, cha
 			case update:
 				if fields, ok := event.UpdateDescription.UpdatedFields["groups"]; ok && len(fields.([]interface{})) > 0 {
 					docs := fields.([]interface{})
+					doc := docs[len(docs)-1]
 					change.Method = types.PersistInsert
-					change.Group = groupFromDoc(docs[0].(bson.M)).asGroup()
+					change.Group = groupFromDoc(doc.(bson.M)).asGroup()
 				} else if fields, ok := event.UpdateDescription.UpdatedFields["deleted"]; ok && len(fields.([]interface{})) > 0 {
 					docs := fields.([]interface{})
+					doc := docs[len(docs)-1]
 					change.Method = types.PersistDelete
-					change.Group = groupFromDoc(docs[0].(bson.M)).asGroup()
+					change.Group = groupFromDoc(doc.(bson.M)).asGroup()
 				}
 
 			default:

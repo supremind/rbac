@@ -336,14 +336,15 @@ func (p *PermissionPersister) watch(ctx context.Context, cs *mgo.ChangeStream, c
 			case update, replace:
 				if fields, ok := event.UpdateDescription.UpdatedFields["permissions"]; ok && len(fields.([]interface{})) > 0 {
 					docs := fields.([]interface{})
-					doc := docs[len(docs)-1]
+					doc := docs[len(docs)-1].(bson.M)
 					change.Method = types.PersistInsert
-					change.Action = actionFromDoc(doc.(bson.M)["action"])
-					change.Object = objectFromDoc(doc.(bson.M)["object"].(bson.M)).asObject()
+					change.Action = actionFromDoc(doc["action"])
+					change.Object = objectFromDoc(doc["object"].(bson.M)).asObject()
 				} else if fields, ok := event.UpdateDescription.UpdatedFields["deleted"]; ok && len(fields.([]interface{})) > 0 {
 					docs := fields.([]interface{})
+					doc := docs[len(docs)-1].(bson.M)
 					change.Method = types.PersistDelete
-					change.Object = objectFromDoc(docs[0].(bson.M)).asObject()
+					change.Object = objectFromDoc(doc).asObject()
 				} else if doc := event.UpdateDescription.UpdatedFields; len(doc) == 1 {
 					for key, val := range doc {
 						if strings.HasPrefix(key, "permissions.") {
