@@ -7,7 +7,7 @@ type authorizerWithPreset struct {
 	types.Authorizer
 }
 
-func NewWithPresetPolices(authz types.Authorizer, presets ...types.PresetPolicy) *authorizerWithPreset {
+func newWithPresetPolices(authz types.Authorizer, presets ...types.PresetPolicy) *authorizerWithPreset {
 	return &authorizerWithPreset{
 		presets:    presets,
 		Authorizer: authz,
