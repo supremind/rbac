@@ -189,7 +189,7 @@ func (a *authorizer) Shall(sub types.Subject, obj types.Object, act types.Action
 			if e != nil {
 				return false, e
 			}
-			if act.Includes(allowed) {
+			if allowed.Includes(act) {
 				return true, nil
 			}
 			act = act.Difference(allowed)
@@ -208,7 +208,7 @@ func (a *authorizer) Shall(sub types.Subject, obj types.Object, act types.Action
 			if e != nil {
 				return false, e
 			}
-			if act.Includes(allowed) {
+			if allowed.Includes(act) {
 				return true, nil
 			}
 			act = act.Difference(allowed)
@@ -225,7 +225,7 @@ func (a *authorizer) Shall(sub types.Subject, obj types.Object, act types.Action
 			if e != nil {
 				return false, e
 			}
-			if act.Includes(allowed) {
+			if allowed.Includes(act) {
 				return true, nil
 			}
 			act = act.Difference(allowed)
