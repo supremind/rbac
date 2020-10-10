@@ -354,6 +354,12 @@ func (p *PermissionPersister) watch(ctx context.Context, cs *mgo.ChangeStream, c
 								p.log.Error(e, "parse updated permission id", "doc", doc)
 								continue
 							}
+							if idx >= len(event.FullDocument.Permissions) {
+								// fixme: how to get correct permission updates?
+								// https://docs.mongodb.com/manual/changeStreams/#lookup-full-document-for-update-operations
+								p.log.V(2).Info("incorrect permission id in storage, content may be changed after updating")
+								continue
+							}
 							change.Object = event.FullDocument.Permissions[idx].Object.asObject()
 							change.Action = actionFromDoc(val)
 							change.Method = types.PersistUpdate
