@@ -1,6 +1,7 @@
 package authorizer
 
 import (
+	"github.com/go-logr/logr"
 	"github.com/houz42/rbac/types"
 )
 
@@ -8,15 +9,17 @@ type authorizer struct {
 	sg types.Grouping
 	og types.Grouping
 	p  types.Permission
+	l  logr.Logger
 }
 
 // New creates an authorizer
-func New(sg, og types.Grouping, p types.Permission, presets ...types.PresetPolicy) types.Authorizer {
+func New(sg, og types.Grouping, p types.Permission, l logr.Logger, presets ...types.PresetPolicy) types.Authorizer {
 	var a types.Authorizer
 	a = &authorizer{
 		sg: sg,
 		og: og,
 		p:  p,
+		l:  l,
 	}
 
 	a = newSyncedAuthorizer(a)
@@ -27,6 +30,8 @@ func New(sg, og types.Grouping, p types.Permission, presets ...types.PresetPolic
 
 // SubjectJoin joins a user or a sub role to a role
 func (a *authorizer) SubjectJoin(sub types.Subject, role types.Role) error {
+	a.l.V(4).Info("subject join", "subject", sub, "role", role)
+
 	if a.sg == nil {
 		return types.ErrNoSubjectGrouping
 	}
@@ -36,6 +41,8 @@ func (a *authorizer) SubjectJoin(sub types.Subject, role types.Role) error {
 
 // SubjectLeave removes a user or a sub role from a role
 func (a *authorizer) SubjectLeave(sub types.Subject, role types.Role) error {
+	a.l.V(4).Info("subject leave", "subject", sub, "role", role)
+
 	if a.sg == nil {
 		return types.ErrNoSubjectGrouping
 	}
@@ -45,6 +52,8 @@ func (a *authorizer) SubjectLeave(sub types.Subject, role types.Role) error {
 
 // RemoveUser removes a user and all policies about it
 func (a *authorizer) RemoveUser(user types.User) error {
+	a.l.V(4).Info("remove user", "user", user)
+
 	if a.sg == nil {
 		return types.ErrNoSubjectGrouping
 	}
@@ -68,6 +77,8 @@ func (a *authorizer) RemoveUser(user types.User) error {
 
 // RemoveRole removes a role and all policies about it
 func (a *authorizer) RemoveRole(role types.Role) error {
+	a.l.V(4).Info("remove role", "role", role)
+
 	if a.sg == nil {
 		return types.ErrNoSubjectGrouping
 	}
@@ -96,6 +107,8 @@ func (a *authorizer) Subjects() types.GroupingReader {
 
 // ObjectJoin joins an article or a sub category to a category
 func (a *authorizer) ObjectJoin(obj types.Object, cat types.Category) error {
+	a.l.V(4).Info("object join", "object", obj, "category", cat)
+
 	if a.og == nil {
 		return types.ErrNoObjectGrouping
 	}
@@ -105,6 +118,8 @@ func (a *authorizer) ObjectJoin(obj types.Object, cat types.Category) error {
 
 // ObjectLeave removes an article or a sub category from a category
 func (a *authorizer) ObjectLeave(obj types.Object, cat types.Category) error {
+	a.l.V(4).Info("object leave", "object", obj, "category", "cat")
+
 	if a.og == nil {
 		return types.ErrNoObjectGrouping
 	}
@@ -114,6 +129,8 @@ func (a *authorizer) ObjectLeave(obj types.Object, cat types.Category) error {
 
 // RemoveArticle removes an article and all polices about it
 func (a *authorizer) RemoveArticle(art types.Article) error {
+	a.l.V(4).Info("remove article", "article", art)
+
 	if a.og == nil {
 		return types.ErrNoObjectGrouping
 	}
@@ -133,6 +150,8 @@ func (a *authorizer) RemoveArticle(art types.Article) error {
 
 // RemoveCategory removes a category and all polices about it
 func (a *authorizer) RemoveCategory(cat types.Category) error {
+	a.l.V(4).Info("remove category", "category", cat)
+
 	if a.og == nil {
 		return types.ErrNoObjectGrouping
 	}
@@ -157,16 +176,22 @@ func (a *authorizer) Objects() types.GroupingReader {
 
 // Permit subject to perform action on object
 func (a *authorizer) Permit(sub types.Subject, obj types.Object, act types.Action) error {
+	a.l.V(4).Info("permit", "subject", sub, "object", obj, "action", act)
+
 	return a.p.Permit(sub, obj, act)
 }
 
 // Revoke permission for subject to perform action on object
 func (a *authorizer) Revoke(sub types.Subject, obj types.Object, act types.Action) error {
+	a.l.V(4).Info("revoke", "subject", sub, "object", obj, "action", act)
+
 	return a.p.Revoke(sub, obj, act)
 }
 
 // Shall subject perform action on object
 func (a *authorizer) Shall(sub types.Subject, obj types.Object, act types.Action) (bool, error) {
+	a.l.V(6).Info("shall", "subject", sub, "object", obj, "action", act)
+
 	allowed, e := a.p.PermittedActions(sub, obj)
 	if e != nil {
 		return false, e

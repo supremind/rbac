@@ -53,7 +53,7 @@ func New(ctx context.Context, opts ...AuthorizerOption) (types.Authorizer, error
 		return nil, errors.New("empty permission persister")
 	}
 
-	authz := authorizer.New(sg, og, p, cfg.presets...)
+	authz := authorizer.New(sg, og, p, cfg.log.WithName("authorizer"), cfg.presets...)
 
 	return authz, nil
 }
