@@ -4,158 +4,84 @@ import (
 	"github.com/houz42/rbac/types"
 )
 
-var _ types.Authorizer = (*authorizer)(nil)
-
 type authorizer struct {
-	sg types.Grouping // optional, subject grouping
-	og types.Grouping // optional, object grouping
+	sg types.Grouping
+	og types.Grouping
 	p  types.Permission
-
-	uap map[types.User]map[types.Article]types.Action // cache user -> article -> action permissions
 }
 
 // New creates an authorizer
-func New(sg types.Grouping, og types.Grouping, p types.Permission) types.Authorizer {
-	if sg != nil && og != nil {
-		p = newBothGroupedPermission(sg, og, p)
-	} else if sg != nil && og == nil {
-		p = newSubjectGroupedPermission(sg, p)
-	} else if sg == nil && og != nil {
-		p = newObjectGroupedPermission(og, p)
+func New(sg, og types.Grouping, p types.Permission, presets ...types.PresetPolicy) types.Authorizer {
+	var a types.Authorizer
+	a = &authorizer{
+		sg: sg,
+		og: og,
+		p:  p,
 	}
 
-	authz := &authorizer{
-		sg:  sg,
-		og:  og,
-		p:   p,
-		uap: make(map[types.User]map[types.Article]types.Action),
-	}
+	a = newSyncedAuthorizer(a)
+	a = newWithPresetPolices(a, presets...)
 
-	return newSyncedAuthorizer(authz)
+	return a
 }
 
 // SubjectJoin joins a user or a sub role to a role
-func (authz *authorizer) SubjectJoin(sub types.Subject, role types.Role) error {
-	if authz.sg == nil {
+func (a *authorizer) SubjectJoin(sub types.Subject, role types.Role) error {
+	if a.sg == nil {
 		return types.ErrNoSubjectGrouping
 	}
 
-	if e := authz.sg.Join(sub, role); e != nil {
-		return e
-	}
-
-	switch sub.(type) {
-	case types.User:
-		return authz.completeUserByRole(sub.(types.User), role)
-
-	case types.Role:
-		users, e := authz.sg.MembersIn(sub.(types.Role))
-		if e != nil {
-			return e
-		}
-		for m := range users {
-			if e := authz.completeUserByRole(m.(types.User), role); e != nil {
-				return e
-			}
-		}
-
-	default:
-		return types.ErrInvlaidSubject
-	}
-
-	return nil
+	return a.sg.Join(sub, role)
 }
 
 // SubjectLeave removes a user or a sub role from a role
-func (authz *authorizer) SubjectLeave(sub types.Subject, role types.Role) error {
-	if authz.sg == nil {
+func (a *authorizer) SubjectLeave(sub types.Subject, role types.Role) error {
+	if a.sg == nil {
 		return types.ErrNoSubjectGrouping
 	}
 
-	if e := authz.sg.Leave(sub, role); e != nil {
+	return a.sg.Leave(sub, role)
+}
+
+// RemoveUser removes a user and all policies about it
+func (a *authorizer) RemoveUser(user types.User) error {
+	if a.sg == nil {
+		return types.ErrNoSubjectGrouping
+	}
+
+	if e := a.sg.RemoveMember(user); e != nil {
 		return e
 	}
 
-	switch sub.(type) {
-	case types.User:
-		return authz.rebuildUser(sub.(types.User))
-
-	case types.Role:
-		users, e := authz.sg.MembersIn(sub.(types.Role))
-		if e != nil {
+	perms, e := a.p.PermissionsFor(user)
+	if e != nil {
+		return e
+	}
+	for obj, act := range perms {
+		if e := a.p.Revoke(user, obj, act); e != nil {
 			return e
 		}
-		for user := range users {
-			if e := authz.rebuildUser(user.(types.User)); e != nil {
-				return e
-			}
-		}
-
-	default:
-		return types.ErrInvlaidSubject
 	}
 
 	return nil
 }
 
-// RemoveUser removes a user and all policies about it
-func (authz *authorizer) RemoveUser(user types.User) error {
-	if authz.sg == nil {
-		return types.ErrNoSubjectGrouping
-	}
-
-	sgp, ok := authz.p.(subjectGroupedPermissioner)
-	if !ok {
-		return types.ErrNoSubjectGrouping
-	}
-
-	delete(authz.uap, user)
-
-	perms, e := sgp.directPermissionsFor(user)
-	if e != nil {
-		return e
-	}
-	for obj, act := range perms {
-		if e := sgp.Revoke(user, obj, act); e != nil {
-			return e
-		}
-	}
-
-	return authz.sg.RemoveMember(user)
-}
-
 // RemoveRole removes a role and all policies about it
-func (authz *authorizer) RemoveRole(role types.Role) error {
-	if authz.sg == nil {
+func (a *authorizer) RemoveRole(role types.Role) error {
+	if a.sg == nil {
 		return types.ErrNoSubjectGrouping
 	}
 
-	sgp, ok := authz.p.(subjectGroupedPermissioner)
-	if !ok {
-		return types.ErrNoSubjectGrouping
-	}
-
-	users, e := authz.sg.MembersIn(role)
-	if e != nil {
+	if e := a.sg.RemoveGroup(role); e != nil {
 		return e
 	}
 
-	if e := authz.sg.RemoveGroup(role); e != nil {
-		return e
-	}
-
-	for user := range users {
-		if e := authz.rebuildUser(user.(types.User)); e != nil {
-			return e
-		}
-	}
-
-	perms, e := sgp.directPermissionsFor(role)
+	perms, e := a.p.PermissionsFor(role)
 	if e != nil {
 		return e
 	}
 	for obj, act := range perms {
-		if e := sgp.Revoke(role, obj, act); e != nil {
+		if e := a.p.Revoke(role, obj, act); e != nil {
 			return e
 		}
 	}
@@ -164,98 +90,40 @@ func (authz *authorizer) RemoveRole(role types.Role) error {
 }
 
 // Subjects returns the GroupingReader interface for subjects
-func (authz *authorizer) Subjects() types.GroupingReader {
-	return authz.sg.(types.GroupingReader)
+func (a *authorizer) Subjects() types.GroupingReader {
+	return a.sg
 }
 
 // ObjectJoin joins an article or a sub category to a category
-func (authz *authorizer) ObjectJoin(obj types.Object, cat types.Category) error {
-	if authz.og == nil {
+func (a *authorizer) ObjectJoin(obj types.Object, cat types.Category) error {
+	if a.og == nil {
 		return types.ErrNoObjectGrouping
 	}
 
-	if e := authz.og.Join(obj, cat); e != nil {
-		return e
-	}
-
-	switch obj.(type) {
-	case types.Article:
-		return authz.completeArticleByCategory(obj.(types.Article), cat)
-
-	case types.Category:
-		arts, e := authz.og.MembersIn(obj.(types.Category))
-		if e != nil {
-			for art := range arts {
-				if e := authz.completeArticleByCategory(art.(types.Article), cat); e != nil {
-					return e
-				}
-			}
-		}
-
-	default:
-		return types.ErrInvlaidObject
-	}
-
-	return nil
+	return a.og.Join(obj, cat)
 }
 
 // ObjectLeave removes an article or a sub category from a category
-func (authz *authorizer) ObjectLeave(obj types.Object, cat types.Category) error {
-	if authz.og == nil {
+func (a *authorizer) ObjectLeave(obj types.Object, cat types.Category) error {
+	if a.og == nil {
 		return types.ErrNoObjectGrouping
 	}
 
-	if e := authz.og.Leave(obj, cat); e != nil {
-		return e
-	}
-
-	switch obj.(type) {
-	case types.Article:
-		return authz.rebuildArticle(obj.(types.Article))
-
-	case types.Category:
-		arts, e := authz.og.MembersIn(obj.(types.Category))
-		if e != nil {
-			return e
-		}
-		for art := range arts {
-			if e := authz.rebuildArticle(art.(types.Article)); e != nil {
-				return e
-			}
-		}
-
-	default:
-		return types.ErrInvlaidObject
-	}
-
-	return nil
+	return a.og.Leave(obj, cat)
 }
 
 // RemoveArticle removes an article and all polices about it
-func (authz *authorizer) RemoveArticle(art types.Article) error {
-	if authz.og == nil {
+func (a *authorizer) RemoveArticle(art types.Article) error {
+	if a.og == nil {
 		return types.ErrNoObjectGrouping
 	}
 
-	ogp, ok := authz.p.(objectGroupedPermissioner)
-	if !ok {
-		return types.ErrNoObjectGrouping
-	}
-
-	if e := authz.og.RemoveMember(art); e != nil {
-		return e
-	}
-
-	for _, perms := range authz.uap {
-		delete(perms, art)
-	}
-
-	perms, e := ogp.directPermissionsOn(art)
+	perms, e := a.p.PermissionsOn(art)
 	if e != nil {
 		return e
 	}
 	for sub, act := range perms {
-		if e := ogp.Revoke(sub, art, act); e != nil {
+		if e := a.p.Revoke(sub, art, act); e != nil {
 			return e
 		}
 	}
@@ -264,37 +132,17 @@ func (authz *authorizer) RemoveArticle(art types.Article) error {
 }
 
 // RemoveCategory removes a category and all polices about it
-func (authz *authorizer) RemoveCategory(cat types.Category) error {
-	if authz.og == nil {
+func (a *authorizer) RemoveCategory(cat types.Category) error {
+	if a.og == nil {
 		return types.ErrNoObjectGrouping
 	}
 
-	ogp, ok := authz.p.(objectGroupedPermissioner)
-	if !ok {
-		return types.ErrNoObjectGrouping
-	}
-
-	arts, e := authz.og.MembersIn(cat)
-	if e != nil {
-		return e
-	}
-
-	if e := authz.og.RemoveGroup(cat); e != nil {
-		return e
-	}
-
-	for art := range arts {
-		if e := authz.rebuildArticle(art.(types.Article)); e != nil {
-			return e
-		}
-	}
-
-	perms, e := ogp.directPermissionsOn(cat)
+	perms, e := a.p.PermissionsOn(cat)
 	if e != nil {
 		return e
 	}
 	for sub, act := range perms {
-		if e := ogp.Revoke(sub, cat, act); e != nil {
+		if e := a.p.Revoke(sub, cat, act); e != nil {
 			return e
 		}
 	}
@@ -302,234 +150,220 @@ func (authz *authorizer) RemoveCategory(cat types.Category) error {
 	return nil
 }
 
-// Objects returns the types.GroupingReader interface for objects
-func (authz *authorizer) Objects() types.GroupingReader {
-	return authz.og.(types.GroupingReader)
+// Objects returns the GroupingReader interface for objects
+func (a *authorizer) Objects() types.GroupingReader {
+	return a.og
 }
 
 // Permit subject to perform action on object
-func (authz *authorizer) Permit(sub types.Subject, obj types.Object, act types.Action) error {
-	if e := authz.p.Permit(sub, obj, act); e != nil {
-		return e
-	}
-
-	users := make(map[types.Member]struct{}, 1)
-	arts := make(map[types.Member]struct{})
-
-	switch sub.(type) {
-	case types.User:
-		users[sub.(types.User)] = struct{}{}
-
-	case types.Role:
-		if authz.sg == nil {
-			return types.ErrNoSubjectGrouping
-		}
-
-		us, e := authz.sg.MembersIn(sub.(types.Role))
-		if e != nil {
-			return e
-		}
-		users = us
-
-	default:
-		return types.ErrInvlaidSubject
-	}
-
-	switch obj.(type) {
-	case types.Article:
-		arts[obj.(types.Article)] = struct{}{}
-
-	case types.Category:
-		if authz.og == nil {
-			return types.ErrNoObjectGrouping
-		}
-
-		as, e := authz.og.MembersIn(obj.(types.Category))
-		if e != nil {
-			return e
-		}
-		arts = as
-
-	default:
-		return types.ErrInvlaidObject
-	}
-
-	for u := range users {
-		user := u.(types.User)
-		if authz.uap[user] == nil {
-			authz.uap[user] = make(map[types.Article]types.Action)
-		}
-
-		for a := range arts {
-			art := a.(types.Article)
-			authz.uap[user][art] |= act
-		}
-	}
-
-	return nil
+func (a *authorizer) Permit(sub types.Subject, obj types.Object, act types.Action) error {
+	return a.p.Permit(sub, obj, act)
 }
 
 // Revoke permission for subject to perform action on object
-func (authz *authorizer) Revoke(sub types.Subject, obj types.Object, act types.Action) error {
-	if e := authz.p.Revoke(sub, obj, act); e != nil {
-		return e
-	}
-
-	var removeByUser func(types.User) error
-
-	switch obj.(type) {
-	case types.Article:
-		removeByUser = func(user types.User) error {
-			if authz.uap[user] == nil {
-				return nil
-			}
-			delete(authz.uap[user], obj.(types.Article))
-			return nil
-		}
-
-	case types.Category:
-		removeByUser = func(user types.User) error {
-			if authz.og == nil {
-				return types.ErrNoObjectGrouping
-			}
-			arts, e := authz.og.MembersIn(obj.(types.Category))
-			if e != nil {
-				return e
-			}
-			for art := range arts {
-				delete(authz.uap[user], art.(types.Article))
-			}
-			return nil
-		}
-	}
-
-	switch sub.(type) {
-	case types.User:
-		return removeByUser(sub.(types.User))
-
-	case types.Role:
-		if authz.sg == nil {
-			return types.ErrNoSubjectGrouping
-		}
-
-		users, e := authz.sg.MembersIn(sub.(types.Role))
-		if e != nil {
-			return e
-		}
-
-		for user := range users {
-			if e := removeByUser(user.(types.User)); e != nil {
-				return e
-			}
-		}
-
-	default:
-		return types.ErrInvlaidObject
-	}
-
-	return nil
+func (a *authorizer) Revoke(sub types.Subject, obj types.Object, act types.Action) error {
+	return a.p.Revoke(sub, obj, act)
 }
 
-// Shall subject to perform action on object
-func (authz *authorizer) Shall(sub types.Subject, obj types.Object, act types.Action) (bool, error) {
-	if user, ok := sub.(types.User); ok {
-		if art, ok := obj.(types.Article); ok {
-			if authz.uap[user] != nil {
-				return authz.uap[user][art].Includes(act), nil
-			}
-			return false, nil
-		}
-	}
-
-	return authz.p.Shall(sub, obj, act)
-}
-
-// PermissionsOn object for all subjects
-func (authz *authorizer) PermissionsOn(obj types.Object) (map[types.Subject]types.Action, error) {
-	return authz.p.PermissionsOn(obj)
-}
-
-// PermissionsFor subject on all objects
-func (authz *authorizer) PermissionsFor(sub types.Subject) (map[types.Object]types.Action, error) {
-	return authz.p.PermissionsFor(sub)
-}
-
-// PermittedActions for subject on object
-func (authz *authorizer) PermittedActions(sub types.Subject, obj types.Object) (types.Action, error) {
-	return authz.p.PermittedActions(sub, obj)
-}
-
-func (authz *authorizer) rebuildUser(user types.User) error {
-	if authz.sg == nil {
-		return types.ErrNoSubjectGrouping
-	}
-
-	roles, e := authz.sg.GroupsOf(user)
+// Shall subject perform action on object
+func (a *authorizer) Shall(sub types.Subject, obj types.Object, act types.Action) (bool, error) {
+	allowed, e := a.p.PermittedActions(sub, obj)
 	if e != nil {
-		return e
+		return false, e
+	}
+	if allowed.Includes(act) {
+		return true, nil
+	}
+
+	act = act.Difference(allowed)
+
+	var roles map[types.Group]struct{}
+	if a.sg != nil {
+		roles, e = a.sg.GroupsOf(sub)
+		if e != nil {
+			return false, e
+		}
+
+		for role := range roles {
+			allowed, e := a.p.PermittedActions(role.(types.Role), obj)
+			if e != nil {
+				return false, e
+			}
+			if act.Includes(allowed) {
+				return true, nil
+			}
+			act = act.Difference(allowed)
+		}
+	}
+
+	var cats map[types.Group]struct{}
+	if a.og != nil {
+		cats, e = a.og.GroupsOf(obj)
+		if e != nil {
+			return false, e
+		}
+
+		for cat := range cats {
+			allowed, e := a.p.PermittedActions(sub, cat.(types.Category))
+			if e != nil {
+				return false, e
+			}
+			if act.Includes(allowed) {
+				return true, nil
+			}
+			act = act.Difference(allowed)
+		}
+	}
+
+	if len(roles) == 0 || len(cats) == 0 {
+		return false, nil
 	}
 
 	for role := range roles {
-		if e := authz.completeUserByRole(user, role.(types.Role)); e != nil {
-			return e
-		}
-	}
-
-	return nil
-}
-
-func (authz *authorizer) completeUserByRole(user types.User, role types.Role) error {
-	perms, e := authz.p.PermissionsFor(role)
-	if e != nil {
-		return e
-	}
-
-	if authz.uap[user] == nil {
-		authz.uap[user] = make(map[types.Article]types.Action, len(perms))
-	}
-
-	for obj, act := range perms {
-		if art, ok := obj.(types.Article); ok {
-			authz.uap[user][art] |= act
-		}
-	}
-
-	return nil
-}
-
-func (authz *authorizer) rebuildArticle(art types.Article) error {
-	if authz.og == nil {
-		return types.ErrNoObjectGrouping
-	}
-
-	cats, e := authz.og.GroupsOf(art)
-	if e != nil {
-		return e
-	}
-
-	for cat := range cats {
-		if e := authz.completeArticleByCategory(art, cat.(types.Category)); e != nil {
-			return e
-		}
-	}
-
-	return nil
-}
-
-func (authz *authorizer) completeArticleByCategory(art types.Article, cat types.Category) error {
-	perms, e := authz.p.PermissionsOn(cat)
-	if e != nil {
-		return e
-	}
-
-	for sub, act := range perms {
-		if user, ok := sub.(types.User); ok {
-			if authz.uap[user] == nil {
-				authz.uap = make(map[types.User]map[types.Article]types.Action, 1)
+		for cat := range cats {
+			allowed, e := a.p.PermittedActions(role.(types.Role), cat.(types.Category))
+			if e != nil {
+				return false, e
 			}
-			authz.uap[user][art] |= act
+			if act.Includes(allowed) {
+				return true, nil
+			}
+			act = act.Difference(allowed)
 		}
 	}
 
-	return nil
+	return false, nil
+}
+
+// PermissionsOn object for all subjects
+func (a *authorizer) PermissionsOn(obj types.Object) (map[types.Subject]types.Action, error) {
+	perms, e := a.p.PermissionsOn(obj)
+	if e != nil {
+		return nil, e
+	}
+
+	if a.og != nil {
+		cats, e := a.og.GroupsOf(obj)
+		if e != nil {
+			return nil, e
+		}
+
+		if perms == nil {
+			perms = make(map[types.Subject]types.Action)
+		}
+
+		for cat := range cats {
+			cp, e := a.p.PermissionsOn(cat.(types.Category))
+			if e != nil {
+				return nil, e
+			}
+			for sub, act := range cp {
+				perms[sub] |= act
+			}
+		}
+	}
+
+	return perms, nil
+}
+
+// PermissionsFor subject on all objects
+func (a *authorizer) PermissionsFor(sub types.Subject) (map[types.Object]types.Action, error) {
+	perms, e := a.p.PermissionsFor(sub)
+	if e != nil {
+		return nil, e
+	}
+
+	if a.sg != nil {
+		roles, e := a.sg.GroupsOf(sub)
+		if e != nil {
+			return nil, e
+		}
+
+		if perms == nil {
+			perms = make(map[types.Object]types.Action)
+		}
+
+		for role := range roles {
+			sp, e := a.p.PermissionsFor(role.(types.Role))
+			if e != nil {
+				return nil, e
+			}
+			for obj, act := range sp {
+				perms[obj] |= act
+			}
+		}
+	}
+
+	return perms, nil
+}
+
+// PermittedActions for subject on object
+func (a *authorizer) PermittedActions(sub types.Subject, obj types.Object) (types.Action, error) {
+	var act types.Action
+
+	allowed, e := a.p.PermittedActions(sub, obj)
+	if e != nil {
+		return 0, e
+	}
+	if act.Includes(types.AllActions) {
+		return act, nil
+	}
+	act |= allowed
+
+	var roles map[types.Group]struct{}
+	if a.sg != nil {
+		roles, e = a.sg.GroupsOf(sub)
+		if e != nil {
+			return 0, e
+		}
+
+		for role := range roles {
+			allowed, e := a.p.PermittedActions(role.(types.Role), obj)
+			if e != nil {
+				return 0, e
+			}
+			if act.Includes(types.AllActions) {
+				return act, nil
+			}
+			act |= allowed
+		}
+	}
+
+	var cats map[types.Group]struct{}
+	if a.og != nil {
+		cats, e = a.og.GroupsOf(obj)
+		if e != nil {
+			return 0, e
+		}
+
+		for cat := range cats {
+			allowed, e := a.p.PermittedActions(sub, cat.(types.Category))
+			if e != nil {
+				return 0, e
+			}
+			if act.Includes(types.AllActions) {
+				return act, nil
+			}
+			act |= allowed
+		}
+	}
+
+	if len(roles) == 0 || len(cats) == 0 {
+		return act, nil
+	}
+
+	for role := range roles {
+		for cat := range cats {
+			allowed, e := a.p.PermittedActions(role.(types.Role), cat.(types.Category))
+			if e != nil {
+				return 0, e
+			}
+			if act.Includes(types.AllActions) {
+				return act, nil
+			}
+			act |= allowed
+		}
+	}
+
+	return act, nil
 }
