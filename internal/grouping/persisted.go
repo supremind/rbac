@@ -35,6 +35,8 @@ func newPersistedGrouping(ctx context.Context, persist types.GroupingPersister, 
 }
 
 func (g *persistedGrouping) loadPersisted() error {
+	g.log.V(4).Info("load persisted polices")
+
 	polices, e := g.persist.List()
 	if e != nil {
 		return e
@@ -70,6 +72,8 @@ func (g *persistedGrouping) startWatching(ctx context.Context) error {
 }
 
 func (g *persistedGrouping) coordinateChange(change types.GroupingPolicyChange) error {
+	g.log.V(4).Info("coordinate grouping changes", "change", change)
+
 	switch change.Method {
 	case types.PersistInsert:
 		return g.grouping.Join(change.Entity, change.Group)
@@ -81,6 +85,8 @@ func (g *persistedGrouping) coordinateChange(change types.GroupingPolicyChange) 
 }
 
 func (g *persistedGrouping) Join(ent types.Entity, group types.Group) error {
+	g.log.V(4).Info("join", "member", ent, "group", group)
+
 	if e := g.persist.Insert(ent, group); e != nil {
 		return e
 	}
@@ -88,6 +94,8 @@ func (g *persistedGrouping) Join(ent types.Entity, group types.Group) error {
 }
 
 func (g *persistedGrouping) Leave(ent types.Entity, group types.Group) error {
+	g.log.V(4).Info("leave", "member", ent, "group", group)
+
 	if e := g.persist.Remove(ent, group); e != nil {
 		return e
 	}
@@ -96,6 +104,8 @@ func (g *persistedGrouping) Leave(ent types.Entity, group types.Group) error {
 }
 
 func (g *persistedGrouping) RemoveGroup(group types.Group) error {
+	g.log.V(4).Info("remove group", "group", group)
+
 	members, e := g.grouping.immediateEntitiesIn(group)
 	if e != nil {
 		return e
@@ -120,6 +130,8 @@ func (g *persistedGrouping) RemoveGroup(group types.Group) error {
 }
 
 func (g *persistedGrouping) RemoveMember(m types.Member) error {
+	g.log.V(4).Info("remove member", "member", m)
+
 	groups, e := g.grouping.immediateGroupsOf(m)
 	if e != nil {
 		return e
