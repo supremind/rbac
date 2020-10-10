@@ -34,6 +34,7 @@ func newPersistedPermission(ctx context.Context, inner types.Permission, persist
 }
 
 func (p *persistedPermission) loadPersisted() error {
+	p.log.V(4).Info("load persisted changes")
 	polices, e := p.persist.List()
 	if e != nil {
 		return e
@@ -70,18 +71,18 @@ func (p *persistedPermission) startWatching(ctx context.Context) error {
 }
 
 func (p *persistedPermission) coordinateChange(change types.PermissionPolicyChange) error {
+	p.log.V(4).Info("coordinate permission changes", "change", change)
+
 	switch change.Method {
 	case types.PersistInsert, types.PersistUpdate:
 		prev, e := p.Permission.PermittedActions(change.Subject, change.Object)
 		if e != nil {
 			return e
 		}
-		if minus := prev.Difference(change.Action); minus > 0 {
-			return p.Permission.Revoke(change.Subject, change.Object, minus)
+		if prev.Includes(change.Action) {
+			return p.Permission.Revoke(change.Subject, change.Object, prev.Difference(change.Action))
 		}
-		if plus := change.Action.Difference(prev); prev > 0 {
-			return p.Permission.Permit(change.Subject, change.Object, plus)
-		}
+		return p.Permission.Permit(change.Subject, change.Object, change.Action.Difference(prev))
 
 	case types.PersistDelete:
 		prev, e := p.Permission.PermittedActions(change.Subject, change.Object)
@@ -91,6 +92,7 @@ func (p *persistedPermission) coordinateChange(change types.PermissionPolicyChan
 		if prev > 0 {
 			return p.Permission.Revoke(change.Subject, change.Object, prev)
 		}
+		return nil
 	}
 
 	return fmt.Errorf("%w: permission persister changes: %s", types.ErrUnsupportedChange, change.Method)
@@ -98,6 +100,8 @@ func (p *persistedPermission) coordinateChange(change types.PermissionPolicyChan
 
 // Permit subject to perform action on object
 func (p *persistedPermission) Permit(sub types.Subject, obj types.Object, act types.Action) error {
+	p.log.V(4).Info("permit", "subject", sub, "object", obj, "action", act)
+
 	before, e := p.Permission.PermittedActions(sub, obj)
 	if e != nil {
 		return e
@@ -118,6 +122,8 @@ func (p *persistedPermission) Permit(sub types.Subject, obj types.Object, act ty
 
 // Revoke permission for subject to perform action on object
 func (p *persistedPermission) Revoke(sub types.Subject, obj types.Object, act types.Action) error {
+	p.log.V(4).Info("revoke", "subject", sub, "object", obj, "action", act)
+
 	before, e := p.Permission.PermittedActions(sub, obj)
 	if e != nil {
 		return e
