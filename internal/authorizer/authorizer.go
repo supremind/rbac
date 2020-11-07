@@ -2,7 +2,7 @@ package authorizer
 
 import (
 	"github.com/go-logr/logr"
-	"github.com/houz42/rbac/types"
+	"github.com/supremind/rbac/types"
 )
 
 type authorizer struct {

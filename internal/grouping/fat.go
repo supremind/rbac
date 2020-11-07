@@ -1,7 +1,7 @@
 package grouping
 
 import (
-	"github.com/houz42/rbac/types"
+	"github.com/supremind/rbac/types"
 )
 
 var _ grouping = (*fatGrouping)(nil)

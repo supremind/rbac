@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	"github.com/houz42/rbac/internal/persist/filter"
-	"github.com/houz42/rbac/types"
+	"github.com/supremind/rbac/internal/persist/filter"
+	"github.com/supremind/rbac/types"
 )
 
 // persistedPermission persists the permission polices with given persister, and makes sure it is synced

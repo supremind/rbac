@@ -9,10 +9,10 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/stdr"
-	"github.com/houz42/rbac/internal/authorizer"
-	"github.com/houz42/rbac/internal/grouping"
-	"github.com/houz42/rbac/internal/permission"
-	"github.com/houz42/rbac/types"
+	"github.com/supremind/rbac/internal/authorizer"
+	"github.com/supremind/rbac/internal/grouping"
+	"github.com/supremind/rbac/internal/permission"
+	"github.com/supremind/rbac/types"
 )
 
 // New creates a RBAC Authorizer

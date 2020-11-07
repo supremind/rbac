@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/houz42/rbac/persist/test"
+	. "github.com/supremind/rbac/persist/test"
 )
 
 func TestPersisters(t *testing.T) {

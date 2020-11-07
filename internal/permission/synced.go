@@ -3,7 +3,7 @@ package permission
 import (
 	"sync"
 
-	"github.com/houz42/rbac/types"
+	"github.com/supremind/rbac/types"
 )
 
 var _ types.Permission = (*syncedPermission)(nil)

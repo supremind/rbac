@@ -12,8 +12,8 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
-	"github.com/houz42/rbac/persist/fake"
-	. "github.com/houz42/rbac/types"
+	"github.com/supremind/rbac/persist/fake"
+	. "github.com/supremind/rbac/types"
 )
 
 func TestPermission(t *testing.T) {

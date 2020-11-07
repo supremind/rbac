@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/houz42/rbac/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/supremind/rbac/types"
 )
 
 var pp types.PermissionPersister

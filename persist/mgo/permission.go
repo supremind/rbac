@@ -9,7 +9,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/houz42/rbac/types"
+	"github.com/supremind/rbac/types"
 )
 
 // PermissionPersister is a PermissionPersister backed by mongodb

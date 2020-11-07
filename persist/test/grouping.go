@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/houz42/rbac/types"
+	"github.com/supremind/rbac/types"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

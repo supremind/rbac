@@ -1,6 +1,6 @@
 package authorizer
 
-import "github.com/houz42/rbac/types"
+import "github.com/supremind/rbac/types"
 
 type authorizerWithPreset struct {
 	presets []types.PresetPolicy

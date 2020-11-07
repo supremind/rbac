@@ -7,7 +7,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/houz42/rbac/types"
+	"github.com/supremind/rbac/types"
 )
 
 // GroupingPersister is a GroupingPersister backed by mongodb

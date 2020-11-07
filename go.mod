@@ -1,4 +1,4 @@
-module github.com/houz42/rbac
+module github.com/supremind/rbac
 
 go 1.14
 

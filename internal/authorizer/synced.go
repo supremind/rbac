@@ -3,7 +3,7 @@ package authorizer
 import (
 	"sync"
 
-	"github.com/houz42/rbac/types"
+	"github.com/supremind/rbac/types"
 )
 
 var _ types.Authorizer = (*syncedAuthorizer)(nil)

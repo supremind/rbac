@@ -1,6 +1,6 @@
 package rbac
 
-import "github.com/houz42/rbac/types"
+import "github.com/supremind/rbac/types"
 
 // PublicShared specify that everbody could do act on obj
 func PublicShared(obj types.Object, act types.Action) types.PresetPolicy {

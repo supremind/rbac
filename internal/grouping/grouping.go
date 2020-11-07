@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	"github.com/houz42/rbac/types"
+	"github.com/supremind/rbac/types"
 )
 
 // New creates a concurent safe, persisted grouping
