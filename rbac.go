@@ -22,7 +22,7 @@ func New(ctx context.Context, opts ...AuthorizerOption) (types.Authorizer, error
 		opt(cfg)
 	}
 
-	if cfg.log == nil {
+	if cfg.log == logr.Discard() {
 		cfg.log = stdr.New(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
 	}
 
